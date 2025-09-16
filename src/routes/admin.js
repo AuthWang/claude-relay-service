@@ -10,6 +10,7 @@ const openaiResponsesAccountService = require('../services/openaiResponsesAccoun
 const azureOpenaiAccountService = require('../services/azureOpenaiAccountService')
 const accountGroupService = require('../services/accountGroupService')
 const redis = require('../models/redis')
+const databaseAdminRoutes = require('./databaseAdmin')
 const { authenticateAdmin } = require('../middleware/auth')
 const logger = require('../utils/logger')
 const oauthHelper = require('../utils/oauthHelper')
@@ -7458,5 +7459,9 @@ router.post('/openai-responses-accounts/:id/reset-usage', authenticateAdmin, asy
     })
   }
 })
+
+// === 数据库管理路由 ===
+// 挂载数据库管理相关的API路由
+router.use('/database', authenticateAdmin, databaseAdminRoutes)
 
 module.exports = router

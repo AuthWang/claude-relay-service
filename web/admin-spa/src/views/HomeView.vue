@@ -1,8 +1,17 @@
 <template>
   <div class="home-view-container" :class="isDarkMode ? 'home-bg-dark' : 'home-bg-light'">
-    <!-- 固定定位的主题切换按钮 -->
+    <!-- 固定定位的主题切换按钮和立即体验按钮 -->
     <div class="theme-toggle-fixed">
-      <ThemeToggle mode="compact" />
+      <div class="flex items-center gap-2">
+        <ThemeToggle mode="compact" />
+        <router-link
+          to="/api-stats"
+          class="experience-btn flex items-center gap-1 rounded-full bg-gradient-to-r from-green-500 to-green-600 px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:shadow-lg"
+        >
+          <i class="fas fa-rocket text-xs" />
+          <span class="hidden sm:inline">立即体验</span>
+        </router-link>
+      </div>
     </div>
 
     <!-- 英雄区块 -->
@@ -118,5 +127,32 @@ const isDarkMode = computed(() => themeStore.isDarkMode)
 .admin-button-refined:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6);
+}
+
+/* 立即体验按钮样式 */
+.experience-btn {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.experience-btn:hover {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* 立即体验按钮光泽效果 */
+.experience-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.experience-btn:hover::before {
+  left: 100%;
 }
 </style>

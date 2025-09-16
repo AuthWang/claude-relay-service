@@ -16,6 +16,7 @@ const AccountsView = () => import('@/views/AccountsView.vue')
 const TutorialView = () => import('@/views/TutorialView.vue')
 const SettingsView = () => import('@/views/SettingsView.vue')
 const ApiStatsView = () => import('@/views/ApiStatsView.vue')
+const DatabaseManagementView = () => import('@/views/DatabaseManagementView.vue')
 
 const routes = [
   {
@@ -109,6 +110,18 @@ const routes = [
         path: '',
         name: 'Settings',
         component: SettingsView
+      }
+    ]
+  },
+  {
+    path: '/database-management',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'DatabaseManagement',
+        component: DatabaseManagementView
       }
     ]
   },
