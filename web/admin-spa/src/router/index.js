@@ -4,6 +4,7 @@ import { useUserStore } from '@/stores/user'
 import { APP_CONFIG } from '@/config/app'
 
 // 路由懒加载
+const HomeView = () => import('@/views/HomeView.vue')
 const LoginView = () => import('@/views/LoginView.vue')
 const UserLoginView = () => import('@/views/UserLoginView.vue')
 const UserDashboardView = () => import('@/views/UserDashboardView.vue')
@@ -19,19 +20,9 @@ const ApiStatsView = () => import('@/views/ApiStatsView.vue')
 const routes = [
   {
     path: '/',
-    redirect: () => {
-      // 智能重定向：避免循环
-      const currentPath = window.location.pathname
-      const basePath = APP_CONFIG.basePath.replace(/\/$/, '') // 移除末尾斜杠
-
-      // 如果当前路径已经是 basePath 或 basePath/，重定向到 api-stats
-      if (currentPath === basePath || currentPath === basePath + '/') {
-        return '/api-stats'
-      }
-
-      // 否则保持默认重定向
-      return '/api-stats'
-    }
+    name: 'Home',
+    component: HomeView,
+    meta: { requiresAuth: false }
   },
   {
     path: '/login',

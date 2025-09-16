@@ -741,6 +741,38 @@ body::before {
     0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
+/* 首页专用背景覆盖规则 - 彻底覆盖全局渐变背景 */
+.home-view-container {
+  position: relative;
+  z-index: 1;
+}
+
+.home-view-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* 明亮模式首页背景 */
+.home-view-container.home-bg-light::before {
+  background: white !important;
+}
+
+/* 暗黑模式首页背景 */
+.home-view-container.home-bg-dark::before {
+  background: #111827 !important;
+}
+
+/* 覆盖body的伪元素背景 */
+body:has(.home-view-container)::before {
+  display: none !important;
+}
+
 /* Tab 内容区域样式 */
 .tab-content {
   animation: fadeIn 0.3s ease-in-out;
