@@ -8,7 +8,7 @@ const router = express.Router()
 
 // 🏠 重定向页面请求到新版 admin-spa
 router.get('/', (req, res) => {
-  res.redirect(301, '/admin-next/api-stats')
+  res.redirect(301, '/admin-next/')
 })
 
 // 🔑 获取 API Key 对应的 ID

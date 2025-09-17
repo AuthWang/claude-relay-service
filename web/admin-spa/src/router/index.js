@@ -140,7 +140,7 @@ const routes = [
   // 捕获所有未匹配的路由
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/api-stats'
+    redirect: '/'
   }
 ]
 
