@@ -100,6 +100,13 @@ services:
       - WEB_TITLE=${WEB_TITLE:-Claude Relay Service}
       - WEB_DESCRIPTION=${WEB_DESCRIPTION:-Multi-account Claude API relay service}
       - WEB_LOGO_URL=${WEB_LOGO_URL:-/assets/logo.png}
+
+      # 🔔 Webhook 配置
+      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
+      - WEBHOOK_DEFAULT_TIMEOUT=${WEBHOOK_DEFAULT_TIMEOUT:-10000}
+      - WEBHOOK_MAX_RETRIES=${WEBHOOK_MAX_RETRIES:-3}
+      - WEBHOOK_RETRY_DELAY=${WEBHOOK_RETRY_DELAY:-1000}
+      - WEBHOOK_RATE_LIMIT=${WEBHOOK_RATE_LIMIT:-60}
       
       # 🛠️ 开发配置
       - DEBUG=${DEBUG:-false}

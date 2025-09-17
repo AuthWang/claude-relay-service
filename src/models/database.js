@@ -112,7 +112,8 @@ class DatabaseManager {
       apikey: this.cacheConfig.apiKeyTTL || 86400,
       session: this.cacheConfig.sessionTTL || 1800,
       usage: this.cacheConfig.usageStatsTTL || 300,
-      account: this.cacheConfig.accountTTL || 3600
+      account: this.cacheConfig.accountTTL || 3600,
+      webhook_config: this.cacheConfig.webhookConfigTTL || 3600
     }
     return ttlMap[type] || this.cacheConfig.defaultTTL || 3600
   }
@@ -1374,6 +1375,193 @@ class DatabaseManager {
       cacheSets: 0,
       errors: 0
     }
+  }
+
+  // =====================================
+  // Webhook 配置操作
+  // =====================================
+
+  /**
+   * 设置 Webhook 配置
+   * @param {string} configKey - 配置键名
+   * @param {Object} configData - 配置数据
+   */
+  async setWebhookConfig(configKey, configData) {
+    const cacheKey = this._getCacheKey('webhook_config', configKey)
+
+    switch (this.strategy) {
+      case 'dual_write':
+        return this._dualWriteWebhookConfig(configKey, configData)
+      case 'cache_first':
+      case 'redis_only':
+        return this._setWebhookConfigRedis(cacheKey, configData)
+      case 'database_first':
+      case 'postgres_only':
+        return this._setWebhookConfigPostgres(configKey, configData)
+      default:
+        throw new Error(`Unknown strategy: ${this.strategy}`)
+    }
+  }
+
+  /**
+   * 获取 Webhook 配置
+   * @param {string} configKey - 配置键名
+   */
+  async getWebhookConfig(configKey) {
+    const cacheKey = this._getCacheKey('webhook_config', configKey)
+
+    switch (this.strategy) {
+      case 'dual_write':
+      case 'cache_first':
+        return this._getWebhookConfigCacheFirst(configKey, cacheKey)
+      case 'database_first':
+        return this._getWebhookConfigDatabaseFirst(configKey, cacheKey)
+      case 'redis_only':
+        return this._getWebhookConfigRedis(cacheKey)
+      case 'postgres_only':
+        return this._getWebhookConfigPostgres(configKey)
+      default:
+        throw new Error(`Unknown strategy: ${this.strategy}`)
+    }
+  }
+
+  // Redis 操作
+  async _setWebhookConfigRedis(cacheKey, configData) {
+    const ttl = this._getTTL('webhook_config')
+    await this.redis.setex(cacheKey, ttl, JSON.stringify(configData))
+    this.stats.cacheSets++
+  }
+
+  async _getWebhookConfigRedis(cacheKey) {
+    const result = await this.redis.get(cacheKey)
+    if (result) {
+      this.stats.redisHits++
+      return JSON.parse(result)
+    }
+    this.stats.redisMisses++
+    return null
+  }
+
+  // PostgreSQL 操作
+  async _setWebhookConfigPostgres(configKey, configData) {
+    const query = `
+      INSERT INTO webhook_configs (config_key, enabled, global_settings, notification_types, retry_settings, rate_limit)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (config_key)
+      DO UPDATE SET
+        enabled = EXCLUDED.enabled,
+        global_settings = EXCLUDED.global_settings,
+        notification_types = EXCLUDED.notification_types,
+        retry_settings = EXCLUDED.retry_settings,
+        rate_limit = EXCLUDED.rate_limit,
+        updated_at = CURRENT_TIMESTAMP,
+        version = webhook_configs.version + 1
+    `
+
+    const values = [
+      configKey,
+      configData.enabled || false,
+      configData.globalSettings || {},
+      configData.notificationTypes || {},
+      configData.retrySettings || {},
+      configData.rateLimit || {}
+    ]
+
+    await this.postgres.query(query, values)
+    this.stats.postgresQueries++
+  }
+
+  async _getWebhookConfigPostgres(configKey) {
+    const query = 'SELECT * FROM webhook_configs WHERE config_key = $1'
+    const result = await this.postgres.query(query, [configKey])
+    this.stats.postgresQueries++
+
+    if (result.rows.length > 0) {
+      const row = result.rows[0]
+      return {
+        id: row.id,
+        enabled: row.enabled,
+        globalSettings: row.global_settings,
+        notificationTypes: row.notification_types,
+        retrySettings: row.retry_settings,
+        rateLimit: row.rate_limit,
+        platforms: await this._getWebhookPlatforms(row.id),
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        version: row.version
+      }
+    }
+    return null
+  }
+
+  async _getWebhookPlatforms(configId) {
+    const query = 'SELECT * FROM webhook_platforms WHERE config_id = $1 ORDER BY created_at'
+    const result = await this.postgres.query(query, [configId])
+    return result.rows.map((row) => ({
+      id: row.id,
+      type: row.platform_type,
+      name: row.name,
+      enabled: row.enabled,
+      url: row.url,
+      credentials: row.credentials,
+      settings: row.settings,
+      headers: row.headers,
+      proxyConfig: row.proxy_config,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }))
+  }
+
+  // 混合操作
+  async _dualWriteWebhookConfig(configKey, configData) {
+    const cacheKey = this._getCacheKey('webhook_config', configKey)
+    const operations = []
+
+    if (this.isPostgresConnected) {
+      operations.push(this._setWebhookConfigPostgres(configKey, configData))
+    }
+
+    if (this.isRedisConnected) {
+      operations.push(this._setWebhookConfigRedis(cacheKey, configData))
+    }
+
+    await Promise.all(operations)
+  }
+
+  async _getWebhookConfigCacheFirst(configKey, cacheKey) {
+    // 先从缓存读取
+    if (this.isRedisConnected) {
+      const cached = await this._getWebhookConfigRedis(cacheKey)
+      if (cached) {
+        return cached
+      }
+    }
+
+    // 缓存未命中，从数据库读取
+    if (this.isPostgresConnected) {
+      const result = await this._getWebhookConfigPostgres(configKey)
+      if (result && this.isRedisConnected) {
+        // 写回缓存
+        await this._setWebhookConfigRedis(cacheKey, result)
+      }
+      return result
+    }
+
+    return null
+  }
+
+  async _getWebhookConfigDatabaseFirst(configKey, cacheKey) {
+    // 先从数据库读取
+    if (this.isPostgresConnected) {
+      return this._getWebhookConfigPostgres(configKey)
+    }
+
+    // 数据库不可用，从缓存读取
+    if (this.isRedisConnected) {
+      return this._getWebhookConfigRedis(cacheKey)
+    }
+
+    return null
   }
 
   // =====================================

@@ -2,7 +2,7 @@
   <div class="space-y-6">
 
     <!-- 数据库状态卡片 -->
-    <div class="grid gap-4 md:grid-cols-3">
+    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <!-- Redis 状态 -->
       <div class="glass rounded-2xl p-6 shadow-lg">
         <div class="flex items-center justify-between">
@@ -76,6 +76,32 @@
           </div>
           <div class="text-sm text-gray-500 dark:text-gray-400">
             {{ dbStatus?.strategy || 'cache_first' }} 策略
+          </div>
+        </div>
+      </div>
+
+      <!-- Webhook 配置状态 -->
+      <div class="glass rounded-2xl p-6 shadow-lg">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Webhook 配置</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">通知配置管理</p>
+          </div>
+          <div class="text-3xl">
+            <i
+              :class="[
+                'fas',
+                webhookStatus?.enabled ? 'fa-bell text-blue-500' : 'fa-bell-slash text-gray-400'
+              ]"
+            />
+          </div>
+        </div>
+        <div class="mt-4">
+          <div class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+            {{ webhookStatus?.platformCount || 0 }}
+          </div>
+          <div class="text-sm text-gray-500 dark:text-gray-400">
+            {{ webhookStatus?.enabled ? '已启用' : '已禁用' }} 平台
           </div>
         </div>
       </div>
@@ -194,6 +220,7 @@ export default {
     // Reactive data
     const dbStatus = ref(null)
     const dbCounts = ref({ redis: 0, postgres: 0 })
+    const webhookStatus = ref({ enabled: false, platformCount: 0, configCount: 0 })
     const logs = ref([])
     const loading = ref({
       check: false,
@@ -248,6 +275,22 @@ export default {
       } catch (error) {
         console.error('Failed to fetch database status:', error)
         addLog('获取数据库状态失败', 'error', error.message)
+      }
+    }
+
+    const fetchWebhookStatus = async () => {
+      try {
+        const response = await apiClient.get('/admin/database/webhook-status')
+
+        if (response.success) {
+          webhookStatus.value = response.data
+          addLog('Webhook状态更新', 'success')
+        }
+      } catch (error) {
+        console.error('Failed to fetch webhook status:', error)
+        addLog('获取Webhook状态失败', 'error', error.message)
+        // 设置默认状态，避免界面错误
+        webhookStatus.value = { enabled: false, platformCount: 0, configCount: 0 }
       }
     }
 
@@ -351,10 +394,14 @@ export default {
     onMounted(async () => {
       addLog('数据库管理界面加载完成', 'success')
       await fetchDatabaseStatus()
+      await fetchWebhookStatus()
       await checkConsistency()
 
       // 每30秒刷新状态
-      setInterval(fetchDatabaseStatus, 30000)
+      setInterval(() => {
+        fetchDatabaseStatus()
+        fetchWebhookStatus()
+      }, 30000)
     })
 
     return {
@@ -362,6 +409,7 @@ export default {
       oemSettings,
       dbStatus,
       dbCounts,
+      webhookStatus,
       logs,
       loading,
       isDataConsistent,

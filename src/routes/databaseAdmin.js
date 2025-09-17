@@ -110,6 +110,48 @@ router.get('/status', async (req, res) => {
   }
 })
 
+/**
+ * GET /admin/database/webhook-status
+ * 获取 Webhook 配置状态
+ */
+router.get('/webhook-status', async (req, res) => {
+  try {
+    const webhookService = require('../services/webhookConfigService')
+
+    // 获取webhook配置
+    const config = await webhookService.getConfig()
+
+    // 统计平台数量
+    const enabledPlatforms = config.platforms?.filter((p) => p.enabled) || []
+    const totalPlatforms = config.platforms?.length || 0
+
+    // 获取健康状态
+    const healthStatus = await webhookService.healthCheck()
+
+    res.json({
+      success: true,
+      data: {
+        enabled: config.enabled,
+        platformCount: enabledPlatforms.length,
+        totalPlatforms,
+        configCount: Object.keys(config.notificationTypes || {}).length,
+        health: healthStatus,
+        notificationTypes: config.notificationTypes,
+        strategy: database.strategy,
+        lastUpdated: config.updatedAt
+      },
+      timestamp: new Date().toISOString()
+    })
+  } catch (error) {
+    logger.error('❌ Failed to get webhook status:', error)
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get webhook status',
+      message: error.message
+    })
+  }
+})
+
 // === 数据同步操作 ===
 
 /**

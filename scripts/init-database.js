@@ -11,6 +11,9 @@ const { Pool } = require('pg')
 const winston = require('winston')
 const path = require('path')
 
+// 加载环境变量
+require('dotenv').config()
+
 // 配置日志
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -40,10 +43,10 @@ class DatabaseInitializer {
 
     this.pool = new Pool({
       host: process.env.POSTGRES_HOST || 'localhost',
-      port: process.env.POSTGRES_PORT || 5432,
+      port: parseInt(process.env.POSTGRES_PORT) || 5432,
       database: process.env.POSTGRES_DATABASE || 'claude_relay',
       user: process.env.POSTGRES_USER || 'postgres',
-      password: String(process.env.POSTGRES_PASSWORD || ''),
+      password: process.env.POSTGRES_PASSWORD || 'claude_relay_db_2024',
       max: 5,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
@@ -234,6 +237,80 @@ class DatabaseInitializer {
         description: '系统日志表'
       },
 
+      // Webhook配置表
+      webhook_configs: {
+        schema: `
+          CREATE TABLE IF NOT EXISTS webhook_configs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            config_key VARCHAR(255) UNIQUE NOT NULL,
+            enabled BOOLEAN DEFAULT true,
+            global_settings JSONB NOT NULL DEFAULT '{}',
+            notification_types JSONB DEFAULT '{}',
+            retry_settings JSONB DEFAULT '{"maxRetries": 3, "retryDelay": 1000}',
+            rate_limit JSONB DEFAULT '{}',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            version INTEGER DEFAULT 1
+          )
+        `,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_webhook_configs_config_key ON webhook_configs(config_key)',
+          'CREATE INDEX IF NOT EXISTS idx_webhook_configs_enabled ON webhook_configs(enabled)'
+        ],
+        description: 'Webhook配置表'
+      },
+
+      // Webhook平台表
+      webhook_platforms: {
+        schema: `
+          CREATE TABLE IF NOT EXISTS webhook_platforms (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            config_id UUID REFERENCES webhook_configs(id) ON DELETE CASCADE,
+            platform_type VARCHAR(50) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            enabled BOOLEAN DEFAULT true,
+            url TEXT,
+            credentials JSONB DEFAULT '{}',
+            settings JSONB DEFAULT '{}',
+            headers JSONB DEFAULT '{}',
+            proxy_config JSONB DEFAULT '{}',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(config_id, name)
+          )
+        `,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_webhook_platforms_config_id ON webhook_platforms(config_id)',
+          'CREATE INDEX IF NOT EXISTS idx_webhook_platforms_type ON webhook_platforms(platform_type)',
+          'CREATE INDEX IF NOT EXISTS idx_webhook_platforms_enabled ON webhook_platforms(enabled)'
+        ],
+        description: 'Webhook平台配置表'
+      },
+
+      // Webhook发送历史表
+      webhook_history: {
+        schema: `
+          CREATE TABLE IF NOT EXISTS webhook_history (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            platform_id UUID REFERENCES webhook_platforms(id) ON DELETE CASCADE,
+            notification_type VARCHAR(100) NOT NULL,
+            payload JSONB NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            response_code INTEGER,
+            response_body TEXT,
+            error_message TEXT,
+            retry_count INTEGER DEFAULT 0,
+            sent_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+          )
+        `,
+        indexes: [
+          'CREATE INDEX IF NOT EXISTS idx_webhook_history_platform_id ON webhook_history(platform_id)',
+          'CREATE INDEX IF NOT EXISTS idx_webhook_history_sent_at ON webhook_history(sent_at)',
+          'CREATE INDEX IF NOT EXISTS idx_webhook_history_status ON webhook_history(status)'
+        ],
+        description: 'Webhook发送历史表'
+      },
+
       // 系统配置表
       system_configs: {
         schema: `
@@ -323,6 +400,8 @@ class DatabaseInitializer {
       'admins',
       'usage_statistics',
       'sessions',
+      'webhook_configs',
+      'webhook_platforms',
       'system_configs'
     ]
 
@@ -375,6 +454,34 @@ class DatabaseInitializer {
 
       await client.query(insertQuery, [config.key, config.value, config.description])
     }
+
+    // 插入默认webhook配置
+    const defaultWebhookConfigQuery = `
+      INSERT INTO webhook_configs (config_key, enabled, global_settings, notification_types, retry_settings)
+      VALUES ($1, $2, $3, $4, $5)
+      ON CONFLICT (config_key) DO NOTHING
+    `
+
+    const defaultWebhookConfig = {
+      config_key: 'webhook_config:default',
+      enabled: true,
+      global_settings: JSON.stringify({ timezone: 'Asia/Shanghai', defaultFormat: 'json' }),
+      notification_types: JSON.stringify({
+        test: true,
+        account_error: true,
+        rate_limit: true,
+        system_alert: true
+      }),
+      retry_settings: JSON.stringify({ maxRetries: 3, retryDelay: 1000, backoffMultiplier: 2 })
+    }
+
+    await client.query(defaultWebhookConfigQuery, [
+      defaultWebhookConfig.config_key,
+      defaultWebhookConfig.enabled,
+      defaultWebhookConfig.global_settings,
+      defaultWebhookConfig.notification_types,
+      defaultWebhookConfig.retry_settings
+    ])
 
     logger.info('✅ 初始数据插入完成')
   }
