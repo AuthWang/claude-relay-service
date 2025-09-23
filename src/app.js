@@ -9,7 +9,6 @@ const bcrypt = require('bcryptjs')
 const config = require('../config/config')
 const logger = require('./utils/logger') // Trigger restart
 const redis = require('./models/redis')
-const databaseInit = require('./utils/databaseInit')
 const pricingService = require('./services/pricingService')
 const cacheMonitor = require('./utils/cacheMonitor')
 
@@ -46,10 +45,10 @@ class Application {
 
   async initialize() {
     try {
-      // 🔗 初始化数据库 (Redis + PostgreSQL)
-      logger.info('🔄 Initializing Database...')
-      await databaseInit.initialize()
-      logger.success('✅ Database initialized successfully')
+      // 🔗 初始化Redis数据库
+      logger.info('🔄 Initializing Redis...')
+      await redis.connect()
+      logger.success('✅ Redis initialized successfully')
 
       // 💰 初始化价格服务
       logger.info('🔄 Initializing pricing service...')
@@ -582,10 +581,10 @@ class Application {
           }
 
           try {
-            await databaseInit.shutdown()
-            logger.info('👋 Database disconnected')
+            await redis.disconnect()
+            logger.info('👋 Redis disconnected')
           } catch (error) {
-            logger.error('❌ Error disconnecting Database:', error)
+            logger.error('❌ Error disconnecting Redis:', error)
           }
 
           logger.success('✅ Graceful shutdown completed')

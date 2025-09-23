@@ -1,4 +1,4 @@
-const databaseManager = require('../models/database')
+const redis = require('../models/redis')
 const logger = require('../utils/logger')
 const { v4: uuidv4 } = require('uuid')
 
@@ -6,7 +6,6 @@ class WebhookConfigService {
   constructor() {
     this.KEY_PREFIX = 'webhook_config'
     this.DEFAULT_CONFIG_KEY = `${this.KEY_PREFIX}:default`
-    this.database = databaseManager
   }
 
   /**
@@ -14,7 +13,8 @@ class WebhookConfigService {
    */
   async getConfig() {
     try {
-      let config = await this.database.getWebhookConfig(this.DEFAULT_CONFIG_KEY)
+      const configStr = await redis.get(this.DEFAULT_CONFIG_KEY)
+      let config = configStr ? JSON.parse(configStr) : null
       if (!config) {
         // 返回默认配置
         config = this.getDefaultConfig()
@@ -38,9 +38,9 @@ class WebhookConfigService {
       // 添加更新时间
       config.updatedAt = new Date().toISOString()
 
-      // 使用DatabaseManager的混合存储
-      await this.database.setWebhookConfig(this.DEFAULT_CONFIG_KEY, config)
-      logger.info('✅ Webhook配置已保存到混合存储')
+      // 保存到Redis
+      await redis.set(this.DEFAULT_CONFIG_KEY, JSON.stringify(config))
+      logger.info('✅ Webhook配置已保存到Redis')
 
       return config
     } catch (error) {
@@ -458,15 +458,12 @@ class WebhookConfigService {
    */
   async healthCheck() {
     try {
-      return await this.database.healthCheck()
+      // Redis健康检查
+      await redis.get('health_check')
+      return true
     } catch (error) {
       logger.error('Webhook配置服务健康检查失败:', error)
-      return {
-        redis: false,
-        postgres: false,
-        overall: false,
-        error: error.message
-      }
+      return false
     }
   }
 
@@ -474,7 +471,11 @@ class WebhookConfigService {
    * 获取性能统计
    */
   getStats() {
-    return this.database.getStats()
+    // 返回Redis基础统计
+    return {
+      connections: { redis: redis.isConnected },
+      strategy: 'redis_only'
+    }
   }
 }
 

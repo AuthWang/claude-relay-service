@@ -1,7 +1,6 @@
-version: '3.8'
 
 # Claude Relay Service Docker Compose 配置
-# 所有配置通过环境变量设置，无需映射 .env 文件
+# 自动读取 .env 文件中的环境变量
 
 services:
   # 🚀 Claude Relay Service
@@ -38,40 +37,13 @@ services:
       - REDIS_DB=${REDIS_DB:-0}
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-}
 
-      # 🗄️ PostgreSQL 配置
-      - POSTGRES_ENABLED=${POSTGRES_ENABLED:-false}
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-claude_relay}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
 
-      # PostgreSQL 连接池配置
-      - POSTGRES_POOL_MAX=${POSTGRES_POOL_MAX:-20}
-      - POSTGRES_POOL_MIN=${POSTGRES_POOL_MIN:-5}
-      - POSTGRES_POOL_IDLE_TIMEOUT=${POSTGRES_POOL_IDLE_TIMEOUT:-30000}
-      - POSTGRES_POOL_CONNECT_TIMEOUT=${POSTGRES_POOL_CONNECT_TIMEOUT:-60000}
-
-      # PostgreSQL SSL 配置
-      - POSTGRES_SSL_ENABLED=${POSTGRES_SSL_ENABLED:-false}
-      - POSTGRES_SSL_REJECT_UNAUTHORIZED=${POSTGRES_SSL_REJECT_UNAUTHORIZED:-true}
-
-      # 🔄 混合数据库配置
-      - DATABASE_STRATEGY=${DATABASE_STRATEGY:-redis_only}
+      # 📊 Redis 缓存配置
       - CACHE_DEFAULT_TTL=${CACHE_DEFAULT_TTL:-3600}
       - CACHE_API_KEY_TTL=${CACHE_API_KEY_TTL:-86400}
       - CACHE_SESSION_TTL=${CACHE_SESSION_TTL:-1800}
       - CACHE_USAGE_STATS_TTL=${CACHE_USAGE_STATS_TTL:-300}
       - CACHE_ACCOUNT_TTL=${CACHE_ACCOUNT_TTL:-3600}
-
-      # 数据同步配置
-      - DATABASE_SYNC_ENABLED=${DATABASE_SYNC_ENABLED:-false}
-      - DATABASE_SYNC_INTERVAL=${DATABASE_SYNC_INTERVAL:-3600000}
-      - DATABASE_SYNC_ON_STARTUP=${DATABASE_SYNC_ON_STARTUP:-false}
-
-      # 降级策略配置
-      - DATABASE_FALLBACK_TIMEOUT=${DATABASE_FALLBACK_TIMEOUT:-5000}
-      - DATABASE_FALLBACK_RETRIES=${DATABASE_FALLBACK_RETRIES:-3}
       
       # 🎯 Claude API 配置
       - CLAUDE_API_URL=${CLAUDE_API_URL:-https://api.anthropic.com/v1/messages}
@@ -115,9 +87,6 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      postgres:
-        condition: service_healthy
-        required: false  # PostgreSQL 可选，根据 POSTGRES_ENABLED 决定
     networks:
       - claude-relay-network
     healthcheck:
@@ -127,35 +96,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # 🗄️ PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: claude-relay-postgres
-    restart: unless-stopped
-    expose:
-      - "5432"
-    # 注意：如需本地调试访问，可取消下行注释（生产环境禁用）
-    ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
-    environment:
-      - POSTGRES_DB=${POSTGRES_DATABASE:-claude_relay}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
-    networks:
-      - claude-relay-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DATABASE:-claude_relay}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    profiles:
-      - postgres
-      - hybrid
 
   # 📊 Redis Database
   redis:
@@ -231,43 +171,12 @@ services:
     profiles:
       - monitoring
 
-  # 📊 pgAdmin - PostgreSQL 管理工具 (Optional)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: claude-relay-pgadmin
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@claude-relay.local}
-      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-pgadmin123}
-      - PGADMIN_CONFIG_SERVER_MODE=False
-      - PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED=False
-    depends_on:
-      postgres:
-        condition: service_healthy
-        required: false
-    networks:
-      - claude-relay-network
-    profiles:
-      - monitoring
-      - postgres
-      - hybrid
 
 volumes:
-  postgres_data:
-    driver: local
-    name: claude-relay-postgres-data
   prometheus_data:
     driver: local
   grafana_data:
     driver: local
-  pgadmin_data:
-    driver: local
-    name: claude-relay-pgadmin-data
 
 networks:
   claude-relay-network:

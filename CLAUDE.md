@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Claude Relay Service 是一个功能完整的 AI API 中转服务，支持 Claude 和 Gemini 双平台。提供多账户管理、API Key 认证、代理配置和现代化 Web 管理界面。该服务作为客户端（如 SillyTavern、Claude Code、Gemini CLI）与 AI API 之间的中间件，提供认证、限流、监控等功能。
 
+**重要架构变更**: 系统已从混合数据库架构（Redis + PostgreSQL）迁移至纯 Redis 存储架构，简化了部署和维护复杂度。
+
 ## 核心架构
 
 ### 关键架构概念
@@ -15,15 +17,17 @@ Claude Relay Service 是一个功能完整的 AI API 中转服务，支持 Claud
 - **代理认证流**: 客户端用自建API Key → 验证 → 获取Claude账户OAuth token → 转发到Anthropic
 - **Token管理**: 自动监控OAuth token过期并刷新，支持10秒提前刷新策略
 - **代理支持**: 每个Claude账户支持独立代理配置，OAuth token交换也通过代理进行
-- **数据加密**: 敏感数据（refreshToken, accessToken）使用AES加密存储在Redis
+- **数据存储**: 采用纯Redis存储架构，所有数据包括敏感数据（refreshToken, accessToken）都使用AES加密存储在Redis中
+- **架构简化**: 移除了PostgreSQL依赖和混合存储策略，统一使用Redis进行数据持久化
 
 ### 主要服务组件
 
 - **claudeRelayService.js**: 核心代理服务，处理请求转发和流式响应
 - **claudeAccountService.js**: Claude账户管理，OAuth token刷新和账户选择
 - **geminiAccountService.js**: Gemini账户管理，Google OAuth token刷新和账户选择
-- **apiKeyService.js**: API Key管理，验证、限流和使用统计
+- **apiKeyService.js**: API Key管理，验证、限流和使用统计，直接使用Redis存储
 - **oauthHelper.js**: OAuth工具，PKCE流程实现和代理支持
+- **redis.js**: 统一的Redis数据访问层，替代原有的混合数据库抽象层
 
 ### 认证和代理流程
 
@@ -58,6 +62,12 @@ npm start                     # 生产模式
 npm test                      # 运行测试
 npm run lint                  # 代码检查
 
+# 🐍 Python一键启动（推荐）
+python start.py dev           # 开发模式（自动环境检测）
+python start.py prod          # 生产模式
+python start.py docker        # Docker模式
+python start.py status        # 系统状态检查
+
 # Docker部署
 docker-compose up -d          # 推荐方式
 docker-compose --profile monitoring up -d  # 包含监控
@@ -72,15 +82,47 @@ npm run service:stop          # 停止服务
 必须配置的环境变量：
 - `JWT_SECRET`: JWT密钥（32字符以上随机字符串）
 - `ENCRYPTION_KEY`: 数据加密密钥（32字符固定长度）
-- `REDIS_HOST`: Redis主机地址（默认localhost）
+- `REDIS_HOST`: Redis主机地址（默认127.0.0.1）
 - `REDIS_PORT`: Redis端口（默认6379）
 - `REDIS_PASSWORD`: Redis密码（可选）
 
+**注意**: 系统已移除所有PostgreSQL相关配置，仅需配置Redis连接参数。
+
 初始化命令：
 ```bash
+# 传统方式
 cp config/config.example.js config/config.js
 cp .env.example .env
 npm run setup  # 自动生成密钥并创建管理员账户
+
+# Python一键启动（自动初始化）
+python start.py dev  # 自动检测环境、安装依赖、生成配置
+```
+
+### Python启动脚本特性
+
+**🚀 智能启动**: Python脚本提供更智能的启动体验
+- 自动环境检测（Node.js、npm、Redis等）
+- 自动依赖安装和前端构建
+- 端口冲突检测和处理
+- 实时状态监控
+
+**📋 使用方式**:
+```bash
+# 开发模式（自动环境准备）
+python start.py dev [--port 3001]
+
+# 生产模式
+python start.py prod [--daemon] [--port 3000]
+
+# Docker模式
+python start.py docker [--rebuild] [--daemon]
+
+# 服务管理
+python start.py service start|stop|restart|status
+
+# 系统状态检查
+python start.py status
 ````
 
 ## Web界面功能
@@ -100,6 +142,8 @@ npm run setup  # 自动生成密钥并创建管理员账户
 - **Claude账户管理**: OAuth账户添加、代理配置、状态监控
 - **系统日志**: 实时日志查看，多级别过滤
 - **主题系统**: 支持明亮/暗黑模式切换，自动保存用户偏好设置
+
+**界面变更**: 已移除数据库管理相关功能界面，简化为Redis缓存管理。
 
 ## 重要端点
 
@@ -138,10 +182,11 @@ npm run setup  # 自动生成密钥并创建管理员账户
 
 ### 常见开发问题
 
-1. **Redis连接失败**: 确认Redis服务运行，检查连接配置
+1. **Redis连接失败**: 确认Redis服务运行，检查连接配置（已移除PostgreSQL依赖）
 2. **管理员登录失败**: 检查init.json同步到Redis，运行npm run setup
 3. **API Key格式错误**: 确保使用cr\_前缀格式
 4. **代理连接问题**: 验证SOCKS5/HTTP代理配置和认证信息
+5. **数据迁移**: 如从混合架构升级，所有数据现已存储在Redis中
 
 ### 调试工具
 
@@ -201,7 +246,7 @@ npm run setup  # 自动生成密钥并创建管理员账户
 - 路由处理：`src/routes/` 目录
 - 中间件：`src/middleware/` 目录
 - 配置管理：`config/config.js`
-- Redis 模型：`src/models/redis.js`
+- Redis 数据访问层：`src/models/redis.js`（统一数据访问接口）
 - 工具函数：`src/utils/` 目录
 - 前端主题管理：`web/admin-spa/src/stores/theme.js`
 - 前端组件：`web/admin-spa/src/components/` 目录
@@ -209,17 +254,19 @@ npm run setup  # 自动生成密钥并创建管理员账户
 
 ### 重要架构决策
 
-- 所有敏感数据（OAuth token、refreshToken）都使用 AES 加密存储在 Redis
-- 每个 Claude 账户支持独立的代理配置，包括 SOCKS5 和 HTTP 代理
-- API Key 使用哈希存储，支持 `cr_` 前缀格式
-- 请求流程：API Key 验证 → 账户选择 → Token 刷新（如需）→ 请求转发
-- 支持流式和非流式响应，客户端断开时自动清理资源
+- **纯Redis架构**: 采用Redis作为唯一数据存储，移除PostgreSQL依赖，简化部署和维护
+- **加密存储**: 所有敏感数据（OAuth token、refreshToken）都使用 AES 加密存储在 Redis
+- **代理支持**: 每个 Claude 账户支持独立的代理配置，包括 SOCKS5 和 HTTP 代理
+- **API Key管理**: 使用哈希存储，支持 `cr_` 前缀格式，直接通过Redis操作
+- **请求流程**: API Key 验证 → 账户选择 → Token 刷新（如需）→ 请求转发
+- **资源管理**: 支持流式和非流式响应，客户端断开时自动清理资源
 
 ### 核心数据流和性能优化
 
+- **Redis原生性能**: 采用纯Redis架构，消除数据库抽象层开销，提升访问性能
 - **哈希映射优化**: API Key 验证从 O(n) 优化到 O(1) 查找
 - **智能 Usage 捕获**: 从 SSE 流中解析真实的 token 使用数据
-- **多维度统计**: 支持按时间、模型、用户的实时使用统计
+- **多维度统计**: 支持按时间、模型、用户的实时使用统计，直接存储在Redis
 - **异步处理**: 非阻塞的统计记录和日志写入
 - **原子操作**: Redis 管道操作确保数据一致性
 
@@ -227,9 +274,10 @@ npm run setup  # 自动生成密钥并创建管理员账户
 
 - **多层加密**: API Key 哈希 + OAuth Token AES 加密
 - **零信任验证**: 每个请求都需要完整的认证链
-- **优雅降级**: Redis 连接失败时的回退机制
+- **Redis可靠性**: 基于Redis持久化机制，支持AOF和RDB双重保障
 - **自动重试**: 指数退避重试策略和错误隔离
 - **资源清理**: 客户端断开时的自动清理机制
+- **数据一致性**: 通过Redis事务和管道操作确保数据完整性
 
 ## 项目特定注意事项
 

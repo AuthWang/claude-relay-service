@@ -40,7 +40,6 @@ const tabRouteMap = computed(() => {
     apiKeys: '/api-keys',
     accounts: '/accounts',
     tutorial: '/tutorial',
-    databaseManagement: '/database-management',
     settings: '/settings'
   }
 
@@ -69,7 +68,6 @@ const initActiveTab = () => {
       ApiKeys: 'apiKeys',
       Accounts: 'accounts',
       Tutorial: 'tutorial',
-      DatabaseManagement: 'databaseManagement',
       Settings: 'settings'
     }
     if (routeName && nameToTabMap[routeName]) {
@@ -99,8 +97,7 @@ watch(
         ApiKeys: 'apiKeys',
         Accounts: 'accounts',
         Tutorial: 'tutorial',
-        DatabaseManagement: 'databaseManagement',
-        Settings: 'settings'
+          Settings: 'settings'
       }
       if (routeName && nameToTabMap[routeName]) {
         activeTab.value = nameToTabMap[routeName]
