@@ -404,8 +404,15 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
 
-    # 如果没有指定模式，显示帮助
+    # 如果没有指定模式，显示帮助信息和常用命令
     if not args.mode:
+        print(f"{Colors.BOLD}{Colors.BLUE}🚀 Claude Relay Service 一键启动脚本{Colors.END}\n")
+        print(f"{Colors.CYAN}请指定启动模式，常用命令：{Colors.END}")
+        print(f"  {Colors.GREEN}python3 start.py dev{Colors.END}      # 开发模式")
+        print(f"  {Colors.GREEN}python3 start.py prod{Colors.END}     # 生产模式")
+        print(f"  {Colors.GREEN}python3 start.py status{Colors.END}   # 系统状态")
+        print(f"  {Colors.GREEN}python3 start.py --help{Colors.END}   # 查看帮助")
+        print()
         parser.print_help()
         return
 
@@ -433,6 +440,8 @@ def main():
         starter.logger.info("用户中断")
     except Exception as e:
         starter.logger.error(f"启动失败: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

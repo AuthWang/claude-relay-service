@@ -5,16 +5,13 @@
         <!-- 主标题区域 -->
         <div class="text-center">
           <h1 class="hero-title mb-6 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
-            <span
-              class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent"
-            >
-              Claude Relay Service
+            <span class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              {{ oemSettings.siteName }}
             </span>
           </h1>
 
           <p
-            class="hero-subtitle mx-auto mb-10 max-w-4xl text-lg leading-relaxed text-gray-700 dark:text-gray-300 md:text-xl lg:text-2xl"
-          >
+            class="hero-subtitle mx-auto mb-10 max-w-4xl text-lg leading-relaxed text-gray-700 dark:text-gray-300 md:text-xl lg:text-2xl">
             Claude AI 模型中转服务 - 专业的 Claude 模型接入方案 提供统一的 API 接入和管理界面，简化
             Claude 模型的集成和使用
           </p>
@@ -65,13 +62,17 @@
           <div class="flex flex-wrap justify-center gap-4">
             <span class="language-tag animate__animated animate__pulse animate__infinite animate__slow">Node.js</span>
             <span class="language-separator">•</span>
-            <span class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-1s">Vue.js</span>
+            <span
+              class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-1s">Vue.js</span>
             <span class="language-separator">•</span>
-            <span class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-2s">Redis</span>
+            <span
+              class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-2s">Redis</span>
             <span class="language-separator">•</span>
-            <span class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-3s">Docker</span>
+            <span
+              class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-3s">Docker</span>
             <span class="language-separator">•</span>
-            <span class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-4s">OAuth</span>
+            <span
+              class="language-tag animate__animated animate__pulse animate__infinite animate__slow animate__delay-4s">OAuth</span>
           </div>
         </div>
       </div>
@@ -81,7 +82,9 @@
 
 <script setup>
 import { onMounted } from 'vue'
-
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
+const oemSettings = computed(() => authStore.oemSettings || {})
 // 动画初始化
 onMounted(() => {
   // 添加加载完成的动画效果
@@ -159,6 +162,7 @@ onMounted(() => {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -173,6 +177,7 @@ onMounted(() => {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

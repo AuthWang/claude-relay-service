@@ -144,6 +144,37 @@ python start.py service logs
 
 ## 🚨 故障排除
 
+### 服务器环境问题
+
+如果在服务器上运行 `python3 start.py` 直接退出，请按以下步骤排查：
+
+1. **检查脚本帮助信息**
+   ```bash
+   # 不带参数会显示帮助和常用命令
+   python3 start.py
+
+   # 查看详细帮助
+   python3 start.py --help
+   ```
+
+2. **检查Python版本**
+   ```bash
+   python3 --version  # 需要 Python 3.6+
+   ```
+
+3. **检查文件权限**
+   ```bash
+   chmod +x start.py
+   ls -la start.py scripts/start_utils.py
+   ```
+
+4. **使用具体模式**
+   ```bash
+   # 直接指定模式，不要只运行 python3 start.py
+   python3 start.py status
+   python3 start.py dev
+   ```
+
 ### 常见问题
 
 1. **Redis连接失败**

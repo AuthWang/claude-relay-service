@@ -16,21 +16,14 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
-# 修复Windows控制台编码问题
+# 设置UTF-8编码
 if platform.system() == 'Windows':
     import locale
     try:
-        # 尝试设置UTF-8编码
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
     except:
-        # 如果失败，使用系统默认编码
-        try:
-            encoding = locale.getpreferredencoding()
-            sys.stdout.reconfigure(encoding=encoding)
-            sys.stderr.reconfigure(encoding=encoding)
-        except:
-            pass
+        pass
 
 
 class Colors:
@@ -52,20 +45,8 @@ class Logger:
 
     @staticmethod
     def _safe_print(color: str, prefix: str, message: str):
-        """安全的打印函数，处理编码问题"""
-        try:
-            print(f"{color}{prefix} {message}{Colors.END}")
-        except UnicodeEncodeError:
-            # 如果emoji无法显示，使用简化版本
-            simple_prefix = {
-                "ℹ️": "[INFO]",
-                "✅": "[OK]",
-                "⚠️": "[WARN]",
-                "❌": "[ERROR]",
-                "🔍": "[DEBUG]",
-                "🚀": "[START]"
-            }.get(prefix, prefix)
-            print(f"{color}{simple_prefix} {message}{Colors.END}")
+        """安全的打印函数"""
+        print(f"{color}{prefix} {message}{Colors.END}")
 
     @staticmethod
     def info(message: str, prefix: str = "ℹ️"):
@@ -89,10 +70,7 @@ class Logger:
 
     @staticmethod
     def header(message: str):
-        try:
-            print(f"\n{Colors.BOLD}{Colors.BLUE}🚀 {message}{Colors.END}\n")
-        except UnicodeEncodeError:
-            print(f"\n{Colors.BOLD}{Colors.BLUE}[START] {message}{Colors.END}\n")
+        print(f"\n{Colors.BOLD}{Colors.BLUE}🚀 {message}{Colors.END}\n")
 
 
 class SystemChecker:
