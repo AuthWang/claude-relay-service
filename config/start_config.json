@@ -1,0 +1,20 @@
+{
+  "default_mode": "dev",
+  "ports": {
+    "dev": 3000,
+    "prod": 3000,
+    "redis": 6379
+  },
+  "docker": {
+    "image_name": "claude-relay-service",
+    "container_name": "claude-relay"
+  },
+  "redis": {
+    "host": "localhost",
+    "port": 6379
+  },
+  "auto_install": true,
+  "auto_build_frontend": true,
+  "check_redis": true,
+  "preferred_npm_command": "npm"
+}

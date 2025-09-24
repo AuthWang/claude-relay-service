@@ -7,7 +7,7 @@ const fs = require('fs')
 const bcrypt = require('bcryptjs')
 
 const config = require('../config/config')
-const logger = require('./utils/logger')
+const logger = require('./utils/logger') // Trigger restart
 const redis = require('./models/redis')
 const pricingService = require('./services/pricingService')
 const cacheMonitor = require('./utils/cacheMonitor')
@@ -45,10 +45,10 @@ class Application {
 
   async initialize() {
     try {
-      // 🔗 连接Redis
-      logger.info('🔄 Connecting to Redis...')
+      // 🔗 初始化Redis数据库
+      logger.info('🔄 Initializing Redis...')
       await redis.connect()
-      logger.success('✅ Redis connected successfully')
+      logger.success('✅ Redis initialized successfully')
 
       // 💰 初始化价格服务
       logger.info('🔄 Initializing pricing service...')
@@ -267,7 +267,7 @@ class Application {
 
       // 🏠 根路径重定向到新版管理界面
       this.app.get('/', (req, res) => {
-        res.redirect('/admin-next/api-stats')
+        res.redirect('/admin-next/')
       })
 
       // 🏥 增强的健康检查端点
@@ -456,7 +456,7 @@ class Application {
           `🚀 Claude Relay Service started on ${config.server.host}:${config.server.port}`
         )
         logger.info(
-          `🌐 Web interface: http://${config.server.host}:${config.server.port}/admin-next/api-stats`
+          `🌐 Web interface: http://${config.server.host}:${config.server.port}/admin-next/`
         )
         logger.info(
           `🔗 API endpoint: http://${config.server.host}:${config.server.port}/api/v1/messages`

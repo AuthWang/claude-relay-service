@@ -97,7 +97,7 @@ watch(
         ApiKeys: 'apiKeys',
         Accounts: 'accounts',
         Tutorial: 'tutorial',
-        Settings: 'settings'
+          Settings: 'settings'
       }
       if (routeName && nameToTabMap[routeName]) {
         activeTab.value = nameToTabMap[routeName]

@@ -273,10 +273,17 @@ npm run setup # 会随机生成后台账号密码信息，存储在 data/init.js
 # export ADMIN_USERNAME=cr_admin_custom
 # export ADMIN_PASSWORD=your-secure-password
 
-# 启动服务
+# 启动服务（推荐使用新的ops.js脚本）
+npm run ops:start              # 开发环境启动
+npm run ops:start -- --prod    # 生产环境启动
+# 或者使用交互式方式
+npm run ops
+
+# 传统方式（仍然可用）
 npm run service:start:daemon   # 后台运行
 
 # 查看状态
+npm run ops:status
 npm run service:status
 ```
 
@@ -524,6 +531,24 @@ gpt-5                      # Codex使用固定模型ID
 ## 🔧 日常维护
 
 ### 服务管理
+
+**推荐使用新的ops.js管理脚本：**
+
+```bash
+# 交互式管理（推荐）
+npm run ops
+
+# 直接命令方式
+npm run ops:start     # 启动服务（开发环境）
+npm run ops:start -- --prod  # 启动服务（生产环境）
+npm run ops:stop      # 停止服务
+npm run ops:restart   # 重启服务
+npm run ops:status    # 查看状态
+npm run ops:logs      # 查看日志
+npm run ops:clean     # 清理进程
+```
+
+**传统管理方式（仍可用）：**
 
 ```bash
 # 查看服务状态

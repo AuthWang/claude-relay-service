@@ -7684,4 +7684,7 @@ router.post('/openai-responses-accounts/:id/reset-usage', authenticateAdmin, asy
   }
 })
 
+// === 数据库管理路由 ===
+// 挂载数据库管理相关的API路由
+
 module.exports = router

@@ -48,7 +48,10 @@ if [ ! -f "/app/data/init.json" ]; then
   
   # 执行初始化脚本
   node /app/scripts/setup.js
-  
+
+  echo "📊 执行数据库表初始化..."
+  node /app/scripts/init-database.js
+
   echo "✅ 初始化完成"
 else
   echo "✅ 检测到已有配置，跳过初始化"

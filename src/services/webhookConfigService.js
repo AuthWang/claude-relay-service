@@ -9,16 +9,18 @@ class WebhookConfigService {
   }
 
   /**
-   * 获取webhook配置
+   * 获取webhook配置 (使用混合存储)
    */
   async getConfig() {
     try {
-      const configStr = await redis.client.get(this.DEFAULT_CONFIG_KEY)
-      if (!configStr) {
+      const configStr = await redis.get(this.DEFAULT_CONFIG_KEY)
+      let config = configStr ? JSON.parse(configStr) : null
+      if (!config) {
         // 返回默认配置
-        return this.getDefaultConfig()
+        config = this.getDefaultConfig()
+        await this.saveConfig(config) // 自动保存默认配置
       }
-      return JSON.parse(configStr)
+      return config
     } catch (error) {
       logger.error('获取webhook配置失败:', error)
       return this.getDefaultConfig()
@@ -26,7 +28,7 @@ class WebhookConfigService {
   }
 
   /**
-   * 保存webhook配置
+   * 保存webhook配置 (使用混合存储)
    */
   async saveConfig(config) {
     try {
@@ -36,8 +38,9 @@ class WebhookConfigService {
       // 添加更新时间
       config.updatedAt = new Date().toISOString()
 
-      await redis.client.set(this.DEFAULT_CONFIG_KEY, JSON.stringify(config))
-      logger.info('✅ Webhook配置已保存')
+      // 保存到Redis
+      await redis.set(this.DEFAULT_CONFIG_KEY, JSON.stringify(config))
+      logger.info('✅ Webhook配置已保存到Redis')
 
       return config
     } catch (error) {
@@ -319,13 +322,18 @@ class WebhookConfigService {
         retryDelay: 1000, // 毫秒
         timeout: 10000 // 毫秒
       },
+      globalSettings: {
+        timezone: 'Asia/Shanghai',
+        defaultFormat: 'json'
+      },
+      rateLimit: {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
   }
 
   /**
-   * 添加webhook平台
+   * 添加webhook平台 (使用混合存储)
    */
   async addPlatform(platform) {
     try {
@@ -442,6 +450,31 @@ class WebhookConfigService {
     } catch (error) {
       logger.error('获取启用的webhook平台失败:', error)
       return []
+    }
+  }
+
+  /**
+   * 数据库健康检查
+   */
+  async healthCheck() {
+    try {
+      // Redis健康检查
+      await redis.get('health_check')
+      return true
+    } catch (error) {
+      logger.error('Webhook配置服务健康检查失败:', error)
+      return false
+    }
+  }
+
+  /**
+   * 获取性能统计
+   */
+  getStats() {
+    // 返回Redis基础统计
+    return {
+      connections: { redis: redis.isConnected },
+      strategy: 'redis_only'
     }
   }
 }

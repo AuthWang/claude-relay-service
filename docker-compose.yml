@@ -1,7 +1,6 @@
-version: '3.8'
 
 # Claude Relay Service Docker Compose 配置
-# 所有配置通过环境变量设置，无需映射 .env 文件
+# 自动读取 .env 文件中的环境变量
 
 services:
   # 🚀 Claude Relay Service
@@ -37,6 +36,14 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-}
       - REDIS_DB=${REDIS_DB:-0}
       - REDIS_ENABLE_TLS=${REDIS_ENABLE_TLS:-}
+
+
+      # 📊 Redis 缓存配置
+      - CACHE_DEFAULT_TTL=${CACHE_DEFAULT_TTL:-3600}
+      - CACHE_API_KEY_TTL=${CACHE_API_KEY_TTL:-86400}
+      - CACHE_SESSION_TTL=${CACHE_SESSION_TTL:-1800}
+      - CACHE_USAGE_STATS_TTL=${CACHE_USAGE_STATS_TTL:-300}
+      - CACHE_ACCOUNT_TTL=${CACHE_ACCOUNT_TTL:-3600}
       
       # 🎯 Claude API 配置
       - CLAUDE_API_URL=${CLAUDE_API_URL:-https://api.anthropic.com/v1/messages}
@@ -65,13 +72,21 @@ services:
       - WEB_TITLE=${WEB_TITLE:-Claude Relay Service}
       - WEB_DESCRIPTION=${WEB_DESCRIPTION:-Multi-account Claude API relay service}
       - WEB_LOGO_URL=${WEB_LOGO_URL:-/assets/logo.png}
+
+      # 🔔 Webhook 配置
+      - WEBHOOK_ENABLED=${WEBHOOK_ENABLED:-false}
+      - WEBHOOK_DEFAULT_TIMEOUT=${WEBHOOK_DEFAULT_TIMEOUT:-10000}
+      - WEBHOOK_MAX_RETRIES=${WEBHOOK_MAX_RETRIES:-3}
+      - WEBHOOK_RETRY_DELAY=${WEBHOOK_RETRY_DELAY:-1000}
+      - WEBHOOK_RATE_LIMIT=${WEBHOOK_RATE_LIMIT:-60}
       
       # 🛠️ 开发配置
       - DEBUG=${DEBUG:-false}
       - ENABLE_CORS=${ENABLE_CORS:-true}
       - TRUST_PROXY=${TRUST_PROXY:-true}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - claude-relay-network
     healthcheck:
@@ -79,6 +94,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
+
 
   # 📊 Redis Database
   redis:
@@ -88,8 +105,8 @@ services:
     expose:
       - "6379"
     # 注意：如需本地调试访问，可取消下行注释（生产环境禁用）
-    # ports:
-    #   - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     volumes:
       - ./redis_data:/data
     command: redis-server --save 60 1 --appendonly yes --appendfsync everysec
@@ -153,6 +170,7 @@ services:
       - claude-relay-network
     profiles:
       - monitoring
+
 
 volumes:
   prometheus_data:

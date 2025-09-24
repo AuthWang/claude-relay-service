@@ -615,7 +615,7 @@ class ApiKeyService {
 
       // 从哈希映射中移除（这样就不能再使用这个key进行API调用）
       if (keyData.apiKey) {
-        await redis.deleteApiKeyHash(keyData.apiKey)
+        await redis.redis.deleteApiKeyHash(keyData.apiKey)
       }
 
       logger.success(`🗑️ Soft deleted API key: ${keyId} by ${deletedBy} (${deletedByType})`)
@@ -656,13 +656,14 @@ class ApiKeyService {
       // 保存更新后的数据
       await redis.setApiKey(keyId, updatedData)
 
-      // 使用Redis的hdel命令删除不需要的字段
+      // 删除不需要的字段 (使用底层Redis客户端)
       const keyName = `apikey:${keyId}`
-      await redis.client.hdel(keyName, 'isDeleted', 'deletedAt', 'deletedBy', 'deletedByType')
+      const redisClient = redis.redis
+      await redisClient.client.hdel(keyName, 'isDeleted', 'deletedAt', 'deletedBy', 'deletedByType')
 
       // 重新建立哈希映射（恢复API Key的使用能力）
       if (keyData.apiKey) {
-        await redis.setApiKeyHash(keyData.apiKey, {
+        await redis.redis.setApiKeyHash(keyData.apiKey, {
           id: keyId,
           name: keyData.name,
           isActive: 'true'
@@ -695,18 +696,21 @@ class ApiKeyService {
       const today = new Date().toISOString().split('T')[0]
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
 
+      // 删除相关统计数据 (使用底层Redis客户端)
+      const redisClient = redis.redis
+
       // 删除每日统计
-      await redis.client.del(`usage:daily:${today}:${keyId}`)
-      await redis.client.del(`usage:daily:${yesterday}:${keyId}`)
+      await redisClient.client.del(`usage:daily:${today}:${keyId}`)
+      await redisClient.client.del(`usage:daily:${yesterday}:${keyId}`)
 
       // 删除月度统计
       const currentMonth = today.substring(0, 7)
-      await redis.client.del(`usage:monthly:${currentMonth}:${keyId}`)
+      await redisClient.client.del(`usage:monthly:${currentMonth}:${keyId}`)
 
       // 删除所有相关的统计键（通过模式匹配）
-      const usageKeys = await redis.client.keys(`usage:*:${keyId}*`)
+      const usageKeys = await redisClient.client.keys(`usage:*:${keyId}*`)
       if (usageKeys.length > 0) {
-        await redis.client.del(...usageKeys)
+        await redisClient.client.del(...usageKeys)
       }
 
       // 删除API Key本身
@@ -1215,7 +1219,7 @@ class ApiKeyService {
 
       // 删除旧的哈希映射
       const oldHashedKey = existingKey.apiKey
-      await redis.deleteApiKeyHash(oldHashedKey)
+      await redis.redis.deleteApiKeyHash(oldHashedKey)
 
       // 更新key数据
       const updatedKeyData = {
@@ -1251,7 +1255,7 @@ class ApiKeyService {
 
       // 删除key数据和哈希映射
       await redis.deleteApiKey(keyId)
-      await redis.deleteApiKeyHash(keyData.apiKey)
+      await redis.redis.deleteApiKeyHash(keyData.apiKey)
 
       logger.info(`🗑️ Deleted API key: ${keyData.name} (${keyId})`)
       return true
