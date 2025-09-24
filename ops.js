@@ -525,6 +525,107 @@ class OpsManager {
   }
 
   /**
+   * 交互式模式
+   */
+  async interactive() {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+
+    const askQuestion = (question) => {
+      return new Promise((resolve) => {
+        rl.question(question, resolve);
+      });
+    };
+
+    console.log('\n🚀 Claude Relay Service 交互式管理');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    while (true) {
+      console.log('\n📋 请选择操作:');
+      console.log('  1) 启动服务 (开发环境)');
+      console.log('  2) 启动服务 (生产环境)');
+      console.log('  3) 停止服务');
+      console.log('  4) 重启服务');
+      console.log('  5) 查看状态');
+      console.log('  6) 查看日志');
+      console.log('  7) 实时日志');
+      console.log('  8) 清理日志');
+      console.log('  9) 显示帮助');
+      console.log('  0) 退出');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      const choice = await askQuestion('请输入选择 (0-9): ');
+
+      try {
+        switch (choice.trim()) {
+          case '1':
+            console.log('\n🔧 启动开发环境...');
+            this.isProd = false;
+            await this.start();
+            break;
+
+          case '2':
+            console.log('\n🏭 启动生产环境...');
+            this.isProd = true;
+            await this.start();
+            break;
+
+          case '3':
+            console.log('\n🛑 停止服务...');
+            await this.stop();
+            break;
+
+          case '4':
+            console.log('\n🔄 重启服务...');
+            await this.restart();
+            break;
+
+          case '5':
+            console.log('\n📊 查看服务状态...');
+            await this.status();
+            break;
+
+          case '6':
+            console.log('\n📝 查看日志...');
+            await this.logs(false);
+            break;
+
+          case '7':
+            console.log('\n📝 实时日志 (Ctrl+C 退出)...');
+            await this.logs(true);
+            break;
+
+          case '8':
+            console.log('\n🧹 清理日志...');
+            await this.clean();
+            break;
+
+          case '9':
+            this.help();
+            break;
+
+          case '0':
+            console.log('\n👋 再见!');
+            rl.close();
+            return;
+
+          default:
+            console.log('\n❌ 无效选择，请输入 0-9');
+        }
+      } catch (error) {
+        console.error('❌ 操作失败:', error.message);
+      }
+
+      // 操作完成后暂停一下
+      if (choice.trim() !== '0') {
+        await askQuestion('\n按回车键继续...');
+      }
+    }
+  }
+
+  /**
    * 显示帮助信息
    */
   help() {
@@ -592,7 +693,12 @@ async function main() {
         break;
 
       default:
-        ops.help();
+        // 如果没有参数，进入交互模式
+        if (args.length === 0) {
+          await ops.interactive();
+        } else {
+          ops.help();
+        }
     }
   } catch (error) {
     console.error('❌ 操作失败:', error.message);
