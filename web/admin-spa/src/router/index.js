@@ -15,23 +15,12 @@ const AccountsView = () => import('@/views/AccountsView.vue')
 const TutorialView = () => import('@/views/TutorialView.vue')
 const SettingsView = () => import('@/views/SettingsView.vue')
 const ApiStatsView = () => import('@/views/ApiStatsView.vue')
+const HomeView = () => import('@/views/HomeView.vue')
 
 const routes = [
   {
     path: '/',
-    redirect: () => {
-      // 智能重定向：避免循环
-      const currentPath = window.location.pathname
-      const basePath = APP_CONFIG.basePath.replace(/\/$/, '') // 移除末尾斜杠
-
-      // 如果当前路径已经是 basePath 或 basePath/，重定向到 api-stats
-      if (currentPath === basePath || currentPath === basePath + '/') {
-        return '/api-stats'
-      }
-
-      // 否则保持默认重定向
-      return '/api-stats'
-    }
+    redirect: '/home'
   },
   {
     path: '/login',
@@ -54,6 +43,12 @@ const routes = [
     name: 'UserDashboard',
     component: UserDashboardView,
     meta: { requiresUserAuth: true }
+  },
+  {
+    path: '/home',
+    name: 'Home',
+    component: HomeView,
+    meta: { requiresAuth: false }
   },
   {
     path: '/api-stats',
@@ -187,8 +182,8 @@ router.beforeEach(async (to, from, next) => {
     return next()
   }
 
-  // API Stats 页面不需要认证，直接放行
-  if (to.path === '/api-stats' || to.path.startsWith('/api-stats')) {
+  // Home 和 API Stats 页面不需要认证，直接放行
+  if (to.path === '/home' || to.path === '/api-stats' || to.path.startsWith('/api-stats')) {
     next()
   } else if (to.path === '/user-login') {
     // 如果已经是用户登录状态，重定向到用户仪表板
