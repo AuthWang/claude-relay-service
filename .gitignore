@@ -232,6 +232,12 @@ files/
 .cache/
 cache/
 
+# Optimization cache files (auto-generated)
+.dependency-cache.json
+.build-cache.json
+web/admin-spa/.dependency-cache.json
+web/admin-spa/.build-cache.json
+
 # Build artifacts
 build/
 dist/

@@ -85,6 +85,15 @@ class OpsController {
           await this.logManager.clean();
           break;
 
+        case 'clean-cache':
+          this.serviceManager.cleanOptimizationCache();
+          break;
+
+        case 'cache-stats':
+        case 'stats':
+          this.serviceManager.showOptimizationStats();
+          break;
+
         case 'check':
         case 'env':
           this.serviceManager.checkEnv(this.rootDir);
