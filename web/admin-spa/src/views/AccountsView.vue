@@ -195,26 +195,72 @@
                   <span>会话窗口</span>
                   <el-tooltip placement="top">
                     <template #content>
-                      <div class="space-y-2">
-                        <div>会话窗口进度表示5小时窗口的时间进度</div>
-                        <div class="space-y-1 text-xs">
-                          <div class="flex items-center gap-2">
-                            <div
-                              class="h-2 w-16 rounded bg-gradient-to-r from-blue-500 to-indigo-600"
-                            ></div>
-                            <span>正常：请求正常处理</span>
+                      <div
+                        class="w-[260px] space-y-3 text-xs leading-relaxed text-white dark:text-gray-800"
+                      >
+                        <div class="space-y-2">
+                          <div class="text-sm font-semibold text-white dark:text-gray-900">
+                            Claude 系列
                           </div>
-                          <div class="flex items-center gap-2">
-                            <div
-                              class="h-2 w-16 rounded bg-gradient-to-r from-yellow-500 to-orange-500"
-                            ></div>
-                            <span>警告：接近限制</span>
+                          <div class="text-gray-200 dark:text-gray-600">
+                            会话窗口进度表示 5 小时窗口的时间推移，颜色提示当前调度状态。
                           </div>
-                          <div class="flex items-center gap-2">
-                            <div
-                              class="h-2 w-16 rounded bg-gradient-to-r from-red-500 to-red-600"
-                            ></div>
-                            <span>拒绝：达到速率限制</span>
+                          <div class="space-y-1 pt-1 text-gray-200 dark:text-gray-600">
+                            <div class="flex items-center gap-2">
+                              <div
+                                class="h-2 w-16 rounded bg-gradient-to-r from-blue-500 to-indigo-600"
+                              ></div>
+                              <span class="font-medium text-white dark:text-gray-900"
+                                >正常：请求正常处理</span
+                              >
+                            </div>
+                            <div class="flex items-center gap-2">
+                              <div
+                                class="h-2 w-16 rounded bg-gradient-to-r from-yellow-500 to-orange-500"
+                              ></div>
+                              <span class="font-medium text-white dark:text-gray-900"
+                                >警告：接近限制</span
+                              >
+                            </div>
+                            <div class="flex items-center gap-2">
+                              <div
+                                class="h-2 w-16 rounded bg-gradient-to-r from-red-500 to-red-600"
+                              ></div>
+                              <span class="font-medium text-white dark:text-gray-900"
+                                >拒绝：达到速率限制</span
+                              >
+                            </div>
+                          </div>
+                        </div>
+                        <div class="h-px bg-gray-200 dark:bg-gray-600/50"></div>
+                        <div class="space-y-2">
+                          <div class="text-sm font-semibold text-white dark:text-gray-900">
+                            OpenAI
+                          </div>
+                          <div class="text-gray-200 dark:text-gray-600">
+                            进度条分别展示 5h 与周限窗口的额度使用比例，颜色含义与上方保持一致。
+                          </div>
+                          <div class="space-y-1 text-gray-200 dark:text-gray-600">
+                            <div class="flex items-start gap-2">
+                              <i class="fas fa-clock mt-[2px] text-[10px] text-blue-500"></i>
+                              <span class="font-medium text-white dark:text-gray-900"
+                                >5h 窗口：5小时使用量进度，到达重置时间后会自动归零。</span
+                              >
+                            </div>
+                            <div class="flex items-start gap-2">
+                              <i class="fas fa-history mt-[2px] text-[10px] text-emerald-500"></i>
+                              <span class="font-medium text-white dark:text-gray-900"
+                                >周限窗口：7天使用量进度，重置时同样回到 0%。</span
+                              >
+                            </div>
+                            <div class="flex items-start gap-2">
+                              <i
+                                class="fas fa-info-circle mt-[2px] text-[10px] text-indigo-500"
+                              ></i>
+                              <span class="font-medium text-white dark:text-gray-900"
+                                >当“重置剩余”为 0 时，进度条与百分比会同步清零。</span
+                              >
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -654,6 +700,77 @@
                     <i class="fas fa-minus" />
                   </div>
                 </div>
+                <div v-else-if="account.platform === 'openai'" class="space-y-2">
+                  <div v-if="account.codexUsage" class="space-y-2">
+                    <div class="rounded-lg bg-gray-50 p-2 dark:bg-gray-700/70">
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="inline-flex min-w-[32px] justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300"
+                        >
+                          {{ getCodexWindowLabel('primary') }}
+                        </span>
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2">
+                            <div class="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-600">
+                              <div
+                                :class="[
+                                  'h-2 rounded-full transition-all duration-300',
+                                  getCodexUsageBarClass(account.codexUsage.primary)
+                                ]"
+                                :style="{
+                                  width: getCodexUsageWidth(account.codexUsage.primary)
+                                }"
+                              />
+                            </div>
+                            <span
+                              class="w-12 text-right text-xs font-semibold text-gray-800 dark:text-gray-100"
+                            >
+                              {{ formatCodexUsagePercent(account.codexUsage.primary) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        重置剩余 {{ formatCodexRemaining(account.codexUsage.primary) }}
+                      </div>
+                    </div>
+                    <div class="rounded-lg bg-gray-50 p-2 dark:bg-gray-700/70">
+                      <div class="flex items-center gap-2">
+                        <span
+                          class="inline-flex min-w-[32px] justify-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
+                        >
+                          {{ getCodexWindowLabel('secondary') }}
+                        </span>
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2">
+                            <div class="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-600">
+                              <div
+                                :class="[
+                                  'h-2 rounded-full transition-all duration-300',
+                                  getCodexUsageBarClass(account.codexUsage.secondary)
+                                ]"
+                                :style="{
+                                  width: getCodexUsageWidth(account.codexUsage.secondary)
+                                }"
+                              />
+                            </div>
+                            <span
+                              class="w-12 text-right text-xs font-semibold text-gray-800 dark:text-gray-100"
+                            >
+                              {{ formatCodexUsagePercent(account.codexUsage.secondary) }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                        重置剩余 {{ formatCodexRemaining(account.codexUsage.secondary) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="text-sm text-gray-400">
+                    <span class="text-xs">N/A</span>
+                  </div>
+                </div>
                 <div v-else-if="account.platform === 'claude'" class="text-sm text-gray-400">
                   <i class="fas fa-minus" />
                 </div>
@@ -897,6 +1014,75 @@
                 </span>
                 <span v-else class="text-gray-500"> 已结束 </span>
               </div>
+            </div>
+            <div v-else-if="account.platform === 'openai'" class="space-y-2">
+              <div v-if="account.codexUsage" class="space-y-2">
+                <div class="rounded-lg bg-gray-50 p-2 dark:bg-gray-700">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="inline-flex min-w-[32px] justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-medium text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300"
+                    >
+                      {{ getCodexWindowLabel('primary') }}
+                    </span>
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2">
+                        <div class="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-600">
+                          <div
+                            :class="[
+                              'h-2 rounded-full transition-all duration-300',
+                              getCodexUsageBarClass(account.codexUsage.primary)
+                            ]"
+                            :style="{
+                              width: getCodexUsageWidth(account.codexUsage.primary)
+                            }"
+                          />
+                        </div>
+                        <span
+                          class="w-12 text-right text-xs font-semibold text-gray-800 dark:text-gray-100"
+                        >
+                          {{ formatCodexUsagePercent(account.codexUsage.primary) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    重置剩余 {{ formatCodexRemaining(account.codexUsage.primary) }}
+                  </div>
+                </div>
+                <div class="rounded-lg bg-gray-50 p-2 dark:bg-gray-700">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="inline-flex min-w-[32px] justify-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-300"
+                    >
+                      {{ getCodexWindowLabel('secondary') }}
+                    </span>
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2">
+                        <div class="h-2 flex-1 rounded-full bg-gray-200 dark:bg-gray-600">
+                          <div
+                            :class="[
+                              'h-2 rounded-full transition-all duration-300',
+                              getCodexUsageBarClass(account.codexUsage.secondary)
+                            ]"
+                            :style="{
+                              width: getCodexUsageWidth(account.codexUsage.secondary)
+                            }"
+                          />
+                        </div>
+                        <span
+                          class="w-12 text-right text-xs font-semibold text-gray-800 dark:text-gray-100"
+                        >
+                          {{ formatCodexUsagePercent(account.codexUsage.secondary) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    重置剩余 {{ formatCodexRemaining(account.codexUsage.secondary) }}
+                  </div>
+                </div>
+              </div>
+              <div v-if="!account.codexUsage" class="text-xs text-gray-400">暂无统计</div>
             </div>
 
             <!-- 最后使用时间 -->
@@ -2049,6 +2235,124 @@ const getSessionProgressBarClass = (status, account = null) => {
     // 正常状态（allowed 或其他） - 蓝色
     return 'bg-gradient-to-r from-blue-500 to-indigo-600'
   }
+}
+
+// 归一化 OpenAI 会话窗口使用率
+const normalizeCodexUsagePercent = (usageItem) => {
+  if (!usageItem) {
+    return null
+  }
+
+  const basePercent =
+    typeof usageItem.usedPercent === 'number' && !Number.isNaN(usageItem.usedPercent)
+      ? usageItem.usedPercent
+      : null
+
+  const resetAfterSeconds =
+    typeof usageItem.resetAfterSeconds === 'number' && !Number.isNaN(usageItem.resetAfterSeconds)
+      ? usageItem.resetAfterSeconds
+      : null
+
+  const remainingSeconds =
+    typeof usageItem.remainingSeconds === 'number' ? usageItem.remainingSeconds : null
+
+  const resetAtMs = usageItem.resetAt ? Date.parse(usageItem.resetAt) : null
+
+  const resetElapsed =
+    resetAfterSeconds !== null &&
+    ((remainingSeconds !== null && remainingSeconds <= 0) ||
+      (resetAtMs !== null && !Number.isNaN(resetAtMs) && Date.now() >= resetAtMs))
+
+  if (resetElapsed) {
+    return 0
+  }
+
+  if (basePercent === null) {
+    return null
+  }
+
+  return Math.max(0, Math.min(100, basePercent))
+}
+
+// OpenAI 限额进度条颜色
+const getCodexUsageBarClass = (usageItem) => {
+  const percent = normalizeCodexUsagePercent(usageItem)
+  if (percent === null) {
+    return 'bg-gradient-to-r from-gray-300 to-gray-400'
+  }
+  if (percent >= 90) {
+    return 'bg-gradient-to-r from-red-500 to-red-600'
+  }
+  if (percent >= 75) {
+    return 'bg-gradient-to-r from-yellow-500 to-orange-500'
+  }
+  return 'bg-gradient-to-r from-emerald-500 to-teal-500'
+}
+
+// 百分比显示
+const formatCodexUsagePercent = (usageItem) => {
+  const percent = normalizeCodexUsagePercent(usageItem)
+  if (percent === null) {
+    return '--'
+  }
+  return `${percent.toFixed(1)}%`
+}
+
+// 进度条宽度
+const getCodexUsageWidth = (usageItem) => {
+  const percent = normalizeCodexUsagePercent(usageItem)
+  if (percent === null) {
+    return '0%'
+  }
+  return `${percent}%`
+}
+
+// 时间窗口标签
+const getCodexWindowLabel = (type) => {
+  if (type === 'secondary') {
+    return '周限'
+  }
+  return '5h'
+}
+
+// 格式化剩余时间
+const formatCodexRemaining = (usageItem) => {
+  if (!usageItem) {
+    return '--'
+  }
+
+  let seconds = usageItem.remainingSeconds
+  if (seconds === null || seconds === undefined) {
+    seconds = usageItem.resetAfterSeconds
+  }
+
+  if (seconds === null || seconds === undefined || Number.isNaN(Number(seconds))) {
+    return '--'
+  }
+
+  seconds = Math.max(0, Math.floor(Number(seconds)))
+
+  const days = Math.floor(seconds / 86400)
+  const hours = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  if (days > 0) {
+    if (hours > 0) {
+      return `${days}天${hours}小时`
+    }
+    return `${days}天`
+  }
+  if (hours > 0) {
+    if (minutes > 0) {
+      return `${hours}小时${minutes}分钟`
+    }
+    return `${hours}小时`
+  }
+  if (minutes > 0) {
+    return `${minutes}分钟`
+  }
+  return `${secs}秒`
 }
 
 // 格式化费用显示
