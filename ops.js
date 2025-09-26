@@ -10,6 +10,7 @@ const { ServiceManager } = require('./lib/ops/ServiceManager');
 const { LogManager } = require('./lib/ops/LogManager');
 const { InteractiveManager } = require('./lib/ops/InteractiveManager');
 const { RedisManager } = require('./lib/ops/RedisManager');
+const { ProxyManager } = require('./lib/ops/ProxyManager');
 
 class OpsController {
   constructor() {
@@ -17,6 +18,7 @@ class OpsController {
     this.serviceManager = new ServiceManager(this.rootDir);
     this.logManager = new LogManager(this.rootDir);
     this.redisManager = new RedisManager(this.rootDir);
+    this.proxyManager = new ProxyManager(this.rootDir);
     this.interactiveManager = new InteractiveManager(this.serviceManager, this.logManager);
   }
 
@@ -90,6 +92,11 @@ class OpsController {
 
         case 'redis':
           await this.handleRedisCommands(args);
+          break;
+
+        case 'proxy':
+        case 'domain':
+          await this.handleProxyCommands(args);
           break;
 
         case 'help':
@@ -471,6 +478,74 @@ Redis类型说明:
   persistent  - 数据持久化到./redis_data目录（推荐）
   temporary   - 临时容器，删除后数据丢失
   compose     - 使用docker-compose.yml配置启动
+`);
+  }
+
+  /**
+   * 处理代理相关命令
+   */
+  async handleProxyCommands(args) {
+    const subCommand = args[1] || 'setup';
+
+    switch (subCommand) {
+      case 'setup':
+      case 'config':
+        await this.proxyManager.setupDomainProxy();
+        break;
+
+      case 'status':
+        await this.proxyManager.showProxyStatus();
+        break;
+
+      case 'remove':
+      case 'delete':
+        await this.proxyManager.removeProxyConfig();
+        break;
+
+      case 'help':
+      default:
+        this.showProxyHelp();
+        break;
+    }
+  }
+
+  /**
+   * 显示代理帮助
+   */
+  showProxyHelp() {
+    console.log(`
+🌐 域名代理管理命令帮助
+
+用法: node ops.js proxy <command> [options]
+
+命令:
+  setup               交互式配置域名反向代理（默认）
+  config              同 setup，配置域名反向代理
+  status              查看代理服务状态和配置信息
+  remove              移除指定域名的代理配置
+  help                显示此帮助信息
+
+示例:
+  node ops.js proxy                  # 交互式配置域名代理
+  node ops.js proxy setup            # 配置新域名代理
+  node ops.js proxy status           # 查看代理状态
+  node ops.js proxy remove           # 移除域名配置
+
+功能说明:
+  - 自动检测和安装 Nginx 或 Caddy
+  - 自动生成反向代理配置文件
+  - 自动申请和配置 SSL 证书 (Let's Encrypt)
+  - 支持 WebSocket 和流式响应
+  - 包含安全头和文件上传限制
+
+支持的代理工具:
+  Caddy   - 推荐，自动 HTTPS，配置简单
+  Nginx   - 经典选择，功能强大，需手动配置 SSL
+
+配置后访问:
+  https://your-domain.com/          # 主站点
+  https://your-domain.com/admin/    # 管理界面
+  https://your-domain.com/api/      # API端点
 `);
   }
 }
