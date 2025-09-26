@@ -83,6 +83,21 @@ export default defineConfig(({ mode }) => {
             })
           }
         },
+        // 静态文件代理 - 图片和上传文件
+        '/uploads': {
+          ...proxyConfig,
+          configure: (proxy, options) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              console.log(
+                'Static file proxying:',
+                req.method,
+                req.url,
+                '->',
+                options.target + req.url
+              )
+            })
+          }
+        },
         // API Stats 专用代理规则
         '/apiStats': {
           ...proxyConfig,

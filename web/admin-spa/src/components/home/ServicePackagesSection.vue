@@ -11,167 +11,69 @@
         </p>
       </div>
 
+      <!-- 加载状态 -->
+      <div v-if="loading" class="text-center py-12">
+        <i class="fas fa-spinner animate-spin text-3xl text-gray-400 dark:text-gray-500 mb-4"></i>
+        <p class="text-gray-600 dark:text-gray-400">加载套餐信息...</p>
+      </div>
+
       <!-- 套餐卡片网格 -->
-      <div class="grid gap-6 lg:grid-cols-4">
-        <!-- 基础套餐 -->
-        <div class="package-card basic-card">
-          <div class="package-header">
-            <div class="package-badge basic-badge">入门首选</div>
-            <h3 class="package-title">基础版</h3>
-            <div class="package-price">
-              <span class="price-symbol">¥</span>
-              <span class="price-number">99</span>
-              <span class="price-period">/月</span>
-            </div>
-            <p class="package-description">适合轻度使用的开发者</p>
-          </div>
-
-          <div class="package-features">
-            <ul class="features-list">
-              <li class="feature-item">
-                <i class="fas fa-check text-green-500"></i>
-                Claude Sonnet 模型
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-clock text-blue-500"></i>
-                每天4小时保证时长
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-users text-purple-500"></i>
-                共享账户池
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-shield-alt text-green-500"></i>
-                基础技术支持
-              </li>
-            </ul>
-          </div>
-
-          <div class="package-footer">
-            <button class="package-button basic-button">选择基础版</button>
-          </div>
-        </div>
-
-        <!-- 标准套餐 -->
-        <div class="package-card pro-card popular">
-          <div class="popular-badge">
+      <div v-else-if="packages.length > 0" class="grid gap-6" :class="getGridClasses()">
+        <div
+          v-for="(pkg, index) in packages"
+          :key="pkg.id"
+          :class="['package-card', getCardClass(index), { 'popular': pkg.isPopular }]"
+          @click="openPackageModal(pkg)"
+        >
+          <!-- 推荐标签 -->
+          <div v-if="pkg.isPopular" class="popular-badge">
             <i class="fas fa-star"></i>
             推荐
           </div>
+
           <div class="package-header">
-            <div class="package-badge pro-badge">性价比之选</div>
-            <h3 class="package-title">标准版</h3>
+            <div v-if="pkg.badge" :class="['package-badge', getBadgeClass(index)]">
+              {{ pkg.badge }}
+            </div>
+            <h3 class="package-title">{{ pkg.displayName || pkg.name }}</h3>
             <div class="package-price">
               <span class="price-symbol">¥</span>
-              <span class="price-number">199</span>
-              <span class="price-period">/月</span>
+              <span class="price-number">{{ pkg.price }}</span>
+              <span class="price-period">/{{ pkg.period }}</span>
             </div>
-            <p class="package-description">最受欢迎的均衡选择</p>
+            <p v-if="pkg.description" class="package-description">{{ pkg.description }}</p>
           </div>
 
-          <div class="package-features">
+          <div v-if="pkg.features && pkg.features.length > 0" class="package-features">
             <ul class="features-list">
-              <li class="feature-item">
-                <i class="fas fa-check text-green-500"></i>
-                Claude Sonnet 模型
+              <li
+                v-for="feature in pkg.features.slice(0, 4)"
+                :key="feature.text"
+                class="feature-item"
+              >
+                <i :class="[feature.icon, `text-${feature.color}`]"></i>
+                {{ feature.text }}
               </li>
-              <li class="feature-item">
-                <i class="fas fa-infinity text-blue-500"></i>
-                不限使用次数
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-clock text-purple-500"></i>
-                24小时可用
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-headset text-green-500"></i>
-                优先技术支持
+              <li v-if="pkg.features.length > 4" class="feature-item text-gray-500 dark:text-gray-500">
+                <i class="fas fa-plus"></i>
+                +{{ pkg.features.length - 4 }} 项更多特性
               </li>
             </ul>
           </div>
 
           <div class="package-footer">
-            <button class="package-button pro-button">选择标准版</button>
+            <button :class="['package-button', getButtonClass(index)]">
+              选择{{ pkg.displayName || pkg.name }}
+            </button>
           </div>
         </div>
+      </div>
 
-        <!-- 高级套餐 -->
-        <div class="package-card premium-card">
-          <div class="package-header">
-            <div class="package-badge premium-badge">高端选择</div>
-            <h3 class="package-title">高级版</h3>
-            <div class="package-price">
-              <span class="price-symbol">¥</span>
-              <span class="price-number">399</span>
-              <span class="price-period">/月</span>
-            </div>
-            <p class="package-description">更稳定的服务体验</p>
-          </div>
-
-          <div class="package-features">
-            <ul class="features-list">
-              <li class="feature-item">
-                <i class="fas fa-crown text-yellow-500"></i>
-                Claude Sonnet + Opus
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-infinity text-blue-500"></i>
-                不限使用次数
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-users text-purple-500"></i>
-                更少用户共享
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-headset text-green-500"></i>
-                专属技术支持
-              </li>
-            </ul>
-          </div>
-
-          <div class="package-footer">
-            <button class="package-button premium-button">选择高级版</button>
-          </div>
-        </div>
-
-        <!-- 企业套餐 -->
-        <div class="package-card enterprise-card">
-          <div class="package-header">
-            <div class="package-badge enterprise-badge">旗舰独享</div>
-            <h3 class="package-title">企业版</h3>
-            <div class="package-price">
-              <span class="price-symbol">¥</span>
-              <span class="price-number">999</span>
-              <span class="price-period">/月</span>
-            </div>
-            <p class="package-description">独享专属，无任何限制</p>
-          </div>
-
-          <div class="package-features">
-            <ul class="features-list">
-              <li class="feature-item">
-                <i class="fas fa-crown text-yellow-500"></i>
-                Claude Sonnet + Opus
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-user-crown text-blue-500"></i>
-                独享账户资源
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-infinity text-purple-500"></i>
-                不做任何限制
-              </li>
-              <li class="feature-item">
-                <i class="fas fa-phone text-green-500"></i>
-                1对1专属服务
-              </li>
-            </ul>
-          </div>
-
-          <div class="package-footer">
-            <button class="package-button enterprise-button">选择企业版</button>
-          </div>
-        </div>
+      <!-- 无套餐状态 -->
+      <div v-else-if="!loading" class="text-center py-12">
+        <i class="fas fa-box-open text-4xl text-gray-400 dark:text-gray-500 mb-4"></i>
+        <p class="text-gray-600 dark:text-gray-400 mb-2">暂无可用套餐</p>
+        <p class="text-sm text-gray-500 dark:text-gray-500">管理员暂未配置服务套餐</p>
       </div>
 
       <!-- 重要说明 -->
@@ -210,27 +112,96 @@
         </div>
       </div>
     </div>
+
+    <!-- 套餐弹窗 -->
+    <PackageModal
+      :visible="showPackageModal"
+      :package="selectedPackage"
+      @update:visible="showPackageModal = $event"
+    />
   </section>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import PackageModal from '@/components/packages/PackageModal.vue'
+import api from '@/config/api'
 
+// 响应式数据（已修复导入路径）
+const loading = ref(false)
+const packages = ref([])
+const showPackageModal = ref(false)
+const selectedPackage = ref(null)
+
+// 计算属性
+const getGridClasses = () => {
+  const count = packages.value.length
+  if (count <= 2) return 'lg:grid-cols-2'
+  if (count === 3) return 'lg:grid-cols-3'
+  return 'lg:grid-cols-4'
+}
+
+// 方法
+const getCardClass = (index) => {
+  const classes = ['basic-card', 'pro-card', 'premium-card', 'enterprise-card']
+  return classes[index % classes.length]
+}
+
+const getBadgeClass = (index) => {
+  const classes = ['basic-badge', 'pro-badge', 'premium-badge', 'enterprise-badge']
+  return classes[index % classes.length]
+}
+
+const getButtonClass = (index) => {
+  const classes = ['basic-button', 'pro-button', 'premium-button', 'enterprise-button']
+  return classes[index % classes.length]
+}
+
+const fetchPackages = async () => {
+  try {
+    loading.value = true
+    const response = await api.get('/web/api/packages')
+
+    if (response.success) {
+      packages.value = response.data.filter(pkg => pkg.isActive)
+
+      // 添加交错动画效果
+      setTimeout(() => {
+        const cards = document.querySelectorAll('.package-card')
+        cards.forEach((card, index) => {
+          setTimeout(() => {
+            card.classList.add('animate-in')
+          }, index * 200)
+        })
+      }, 100)
+    } else {
+      console.error('Failed to fetch packages:', response.message)
+      ElMessage.error('获取套餐信息失败')
+    }
+  } catch (error) {
+    console.error('Error fetching packages:', error)
+    // 静默处理错误，显示空状态而非错误提示
+  } finally {
+    loading.value = false
+  }
+}
+
+const openPackageModal = (pkg) => {
+  selectedPackage.value = pkg
+  showPackageModal.value = true
+}
+
+// 生命周期
 onMounted(() => {
-  // 添加交错动画效果
-  const cards = document.querySelectorAll('.package-card')
-  cards.forEach((card, index) => {
-    setTimeout(() => {
-      card.classList.add('animate-in')
-    }, index * 200)
-  })
+  fetchPackages()
 })
 </script>
 
 <style scoped>
 /* 套餐卡片基础样式 */
 .package-card {
-  @apply relative rounded-2xl p-6 transition-all duration-300;
+  @apply relative rounded-2xl p-6 transition-all duration-300 cursor-pointer;
   background: rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(15px);
@@ -489,6 +460,22 @@ onMounted(() => {
     transform: translateX(100%) skewX(-25deg);
   }
 }
+
+/* 特性图标颜色 */
+.text-green-500 { color: #10b981; }
+.text-blue-500 { color: #3b82f6; }
+.text-purple-500 { color: #8b5cf6; }
+.text-yellow-500 { color: #f59e0b; }
+.text-red-500 { color: #ef4444; }
+.text-gray-500 { color: #6b7280; }
+
+/* 深色模式下的图标颜色保持一致 */
+.dark .text-green-500 { color: #10b981; }
+.dark .text-blue-500 { color: #3b82f6; }
+.dark .text-purple-500 { color: #8b5cf6; }
+.dark .text-yellow-500 { color: #f59e0b; }
+.dark .text-red-500 { color: #ef4444; }
+.dark .text-gray-500 { color: #6b7280; }
 
 /* 响应式调整 */
 @media (max-width: 768px) {

@@ -248,6 +248,9 @@ class Application {
         logger.warn('⚠️ Admin SPA dist directory not found, skipping /admin-next route')
       }
 
+      // 🗂️ 静态文件服务 - 上传文件访问
+      this.app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+
       // 🛣️ 路由
       this.app.use('/api', apiRoutes)
       this.app.use('/claude', apiRoutes) // /claude 路由别名，与 /api 功能相同

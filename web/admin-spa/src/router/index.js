@@ -16,6 +16,7 @@ const TutorialView = () => import('@/views/TutorialView.vue')
 const SettingsView = () => import('@/views/SettingsView.vue')
 const ApiStatsView = () => import('@/views/ApiStatsView.vue')
 const HomeView = () => import('@/views/HomeView.vue')
+const PackageManagementView = () => import('@/views/PackageManagementView.vue')
 
 const routes = [
   {
@@ -125,6 +126,18 @@ const routes = [
         path: '',
         name: 'UserManagement',
         component: UserManagementView
+      }
+    ]
+  },
+  {
+    path: '/packages',
+    component: MainLayout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        name: 'Packages',
+        component: PackageManagementView
       }
     ]
   },

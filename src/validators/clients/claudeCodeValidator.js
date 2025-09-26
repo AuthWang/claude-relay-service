@@ -103,7 +103,7 @@ class ClaudeCodeValidator {
 
       // 1. 先检查是否是 Claude Code 的 User-Agent
       // 格式: claude-cli/1.0.86 (external, cli)
-      const claudeCodePattern = /^claude-cli\/[\d\.]+([-\w]*)?\s+\(external,\s*cli\)$/i
+      const claudeCodePattern = /^claude-cli\/[\d.]+([-\w]*)?\s+\(external,\s*cli\)$/i
       if (!claudeCodePattern.test(userAgent)) {
         // 不是 Claude Code 的请求，此验证器不处理
         return false

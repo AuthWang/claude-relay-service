@@ -42,18 +42,18 @@ class ApiClient {
 
   // 构建请求配置
   buildConfig(options = {}) {
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-      },
-      ...options
-    }
+    // 📋 默认不设置 Content-Type，让各个方法自己处理
+    const headers = { ...options.headers }
 
     // 添加认证 token
     const token = this.getAuthToken()
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const config = {
+      ...options,
+      headers
     }
 
     return config
@@ -119,6 +119,10 @@ class ApiClient {
     const { params, ...configOptions } = options
     const config = this.buildConfig({
       ...configOptions,
+      headers: {
+        'Content-Type': 'application/json',
+        ...configOptions.headers
+      },
       method: 'GET'
     })
 
@@ -134,10 +138,27 @@ class ApiClient {
   // POST 请求
   async post(url, data = null, options = {}) {
     const fullUrl = createApiUrl(url)
+
+    // 📋 FormData 处理：不要设置 Content-Type，让浏览器自动处理
+    let processedData = data
+    let headers = { ...options.headers }
+
+    if (data instanceof FormData) {
+      // FormData 情况：不设置 Content-Type，让浏览器添加 boundary
+      processedData = data
+      // 移除默认的 Content-Type
+      delete headers['Content-Type']
+    } else if (data !== null) {
+      // 普通 JSON 数据
+      processedData = JSON.stringify(data)
+      headers['Content-Type'] = 'application/json'
+    }
+
     const config = this.buildConfig({
       ...options,
+      headers,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined
+      body: processedData
     })
 
     try {
@@ -154,6 +175,10 @@ class ApiClient {
     const fullUrl = createApiUrl(url)
     const config = this.buildConfig({
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined
     })
@@ -172,6 +197,10 @@ class ApiClient {
     const fullUrl = createApiUrl(url)
     const config = this.buildConfig({
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined
     })
@@ -187,11 +216,23 @@ class ApiClient {
 
   // DELETE 请求
   async delete(url, options = {}) {
-    const fullUrl = createApiUrl(url)
-    const { data, ...restOptions } = options
+    // 处理查询参数
+    let fullUrl = createApiUrl(url)
+    if (options.params) {
+      const params = new URLSearchParams(options.params)
+      fullUrl += '?' + params.toString()
+    }
+
+    // 移除 params 避免传递给 fetch
+    // eslint-disable-next-line no-unused-vars
+    const { params, data, ...restOptions } = options
 
     const config = this.buildConfig({
       ...restOptions,
+      headers: {
+        'Content-Type': 'application/json',
+        ...restOptions.headers
+      },
       method: 'DELETE',
       body: data ? JSON.stringify(data) : undefined
     })
@@ -208,3 +249,6 @@ class ApiClient {
 
 // 导出单例实例
 export const apiClient = new ApiClient()
+
+// 默认导出
+export default apiClient

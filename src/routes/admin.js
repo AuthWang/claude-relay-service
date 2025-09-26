@@ -9,6 +9,8 @@ const openaiAccountService = require('../services/openaiAccountService')
 const openaiResponsesAccountService = require('../services/openaiResponsesAccountService')
 const azureOpenaiAccountService = require('../services/azureOpenaiAccountService')
 const accountGroupService = require('../services/accountGroupService')
+const packageService = require('../services/packageService')
+const uploadService = require('../services/uploadService')
 const redis = require('../models/redis')
 const { authenticateAdmin } = require('../middleware/auth')
 const logger = require('../utils/logger')
@@ -7686,5 +7688,483 @@ router.post('/openai-responses-accounts/:id/reset-usage', authenticateAdmin, asy
 
 // === 数据库管理路由 ===
 // 挂载数据库管理相关的API路由
+
+// 📦 套餐管理
+
+// 套餐数据验证中间件（完整验证，用于创建）
+function validatePackageData(req, res, _next) {
+  const { name, price, period } = req.body
+
+  // 验证套餐名称
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '套餐名称不能为空'
+    })
+  }
+
+  // 验证价格
+  if (price === undefined || price === null) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '价格不能为空'
+    })
+  }
+
+  const priceNum = Number(price)
+  if (isNaN(priceNum) || priceNum < 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '价格必须是非负数'
+    })
+  }
+
+  // 验证周期
+  const validPeriods = ['月', '年', '次', '永久']
+  if (period && !validPeriods.includes(period)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '周期必须是：月、年、次、永久 之一'
+    })
+  }
+
+  // 验证弹窗配置
+  const { modalConfig } = req.body
+  if (modalConfig && modalConfig.qrcodeUrl && !modalConfig.title) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '设置二维码时必须填写弹窗标题'
+    })
+  }
+
+  _next()
+}
+
+// 套餐数据验证中间件（部分验证，用于更新）
+function validatePackageDataPartial(req, res, _next) {
+  const { name, price, period } = req.body
+
+  // 如果只是状态更新（只有 isActive 字段），直接通过
+  const updateFields = Object.keys(req.body)
+  if (updateFields.length === 1 && updateFields[0] === 'isActive') {
+    return _next()
+  }
+
+  // 验证套餐名称（如果提供）
+  if (name !== undefined && (!name || typeof name !== 'string' || !name.trim())) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '套餐名称不能为空'
+    })
+  }
+
+  // 验证价格（如果提供）
+  if (price !== undefined) {
+    const priceNum = Number(price)
+    if (isNaN(priceNum) || priceNum < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        message: '价格必须是非负数'
+      })
+    }
+  }
+
+  // 验证周期（如果提供）
+  const validPeriods = ['月', '年', '次', '永久']
+  if (period !== undefined && !validPeriods.includes(period)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '周期必须是：月、年、次、永久 之一'
+    })
+  }
+
+  // 验证弹窗配置
+  const { modalConfig } = req.body
+  if (modalConfig && modalConfig.qrcodeUrl && !modalConfig.title) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      message: '设置二维码时必须填写弹窗标题'
+    })
+  }
+
+  _next()
+}
+
+// 获取所有套餐
+router.get('/packages', authenticateAdmin, async (req, res) => {
+  try {
+    const includeInactive = req.query.includeInactive === 'true'
+    const packages = await packageService.getAllPackages(includeInactive)
+
+    return res.json({
+      success: true,
+      data: packages
+    })
+  } catch (error) {
+    logger.error('❌ Failed to get packages:', error)
+    return res.status(500).json({
+      error: 'Failed to get packages',
+      message: error.message
+    })
+  }
+})
+
+// 获取单个套餐
+router.get('/packages/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    const packageData = await packageService.getPackageById(id)
+
+    if (!packageData) {
+      return res.status(404).json({
+        error: 'Package not found'
+      })
+    }
+
+    return res.json({
+      success: true,
+      data: packageData
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to get package ${req.params.id}:`, error)
+    return res.status(500).json({
+      error: 'Failed to get package',
+      message: error.message
+    })
+  }
+})
+
+// 创建套餐
+router.post('/packages', authenticateAdmin, validatePackageData, async (req, res) => {
+  try {
+    const packageData = {
+      ...req.body,
+      createdBy: req.session?.admin?.username || 'admin'
+    }
+
+    const newPackage = await packageService.createPackage(packageData)
+
+    logger.success(`✅ Admin created package: ${newPackage.name}`)
+    return res.json({
+      success: true,
+      data: newPackage
+    })
+  } catch (error) {
+    logger.error('❌ Failed to create package:', error)
+    return res.status(500).json({
+      error: 'Failed to create package',
+      message: error.message
+    })
+  }
+})
+
+// 更新套餐
+router.put('/packages/:id', authenticateAdmin, validatePackageDataPartial, async (req, res) => {
+  try {
+    const { id } = req.params
+    const updates = req.body
+
+    const updatedPackage = await packageService.updatePackage(id, updates)
+
+    logger.success(`✅ Admin updated package: ${id}`)
+    return res.json({
+      success: true,
+      data: updatedPackage
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to update package ${req.params.id}:`, error)
+    return res.status(500).json({
+      error: 'Failed to update package',
+      message: error.message
+    })
+  }
+})
+
+// 删除套餐
+router.delete('/packages/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+
+    await packageService.deletePackage(id)
+
+    logger.success(`✅ Admin deleted package: ${id}`)
+    return res.json({
+      success: true,
+      message: 'Package deleted successfully'
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to delete package ${req.params.id}:`, error)
+    return res.status(500).json({
+      error: 'Failed to delete package',
+      message: error.message
+    })
+  }
+})
+
+// 调整套餐排序
+router.put('/packages/reorder', authenticateAdmin, async (req, res) => {
+  try {
+    const { orderList } = req.body
+
+    if (!Array.isArray(orderList)) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'orderList must be an array'
+      })
+    }
+
+    await packageService.reorderPackages(orderList)
+
+    logger.success(`✅ Admin reordered ${orderList.length} packages`)
+    return res.json({
+      success: true,
+      message: 'Packages reordered successfully'
+    })
+  } catch (error) {
+    logger.error('❌ Failed to reorder packages:', error)
+    return res.status(500).json({
+      error: 'Failed to reorder packages',
+      message: error.message
+    })
+  }
+})
+
+// 🖼️ 文件上传
+
+// 上传二维码图片 - 使用预配置的multer中间件
+router.post('/upload/qrcode', authenticateAdmin, (req, res) => {
+  const category = req.query.category || 'other'
+
+  // 📋 详细请求日志
+  logger.info(`🖼️ Image upload request received:`, {
+    category,
+    contentType: req.get('Content-Type'),
+    contentLength: req.get('Content-Length'),
+    queryParams: req.query,
+    method: req.method,
+    url: req.originalUrl
+  })
+
+  // 获取预配置的multer实例
+  const multerInstance = uploadService.getMulterConfig(category)
+  const uploadSingle = multerInstance.single('image')
+
+  uploadSingle(req, res, (err) => {
+    if (err) {
+      logger.error('❌ Multer upload error:', {
+        error: err.message,
+        stack: err.stack,
+        code: err.code,
+        field: err.field,
+        storageErrors: err.storageErrors,
+        category
+      })
+
+      // 提供更具体的错误信息
+      let errorMessage = 'Failed to upload image'
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        errorMessage = '文件大小超过限制（最大5MB）'
+      } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+        errorMessage = '请选择名为"image"的文件字段'
+      } else if (err.message.includes('只能上传图片文件')) {
+        errorMessage = err.message
+      } else if (err.message.includes('Boundary not found')) {
+        errorMessage = '文件上传格式错误，请重新选择文件'
+      }
+
+      return res.status(400).json({
+        success: false,
+        error: errorMessage,
+        message: err.message,
+        code: err.code
+      })
+    }
+
+    // 📋 检查文件上传结果
+    logger.info(`📂 After multer processing:`, {
+      hasFile: !!req.file,
+      file: req.file
+        ? {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            filename: req.file.filename,
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            path: req.file.path
+          }
+        : null,
+      bodyAfterUpload: Object.keys(req.body || {}),
+      category
+    })
+
+    if (!req.file) {
+      logger.warn('⚠️ No file received in req.file after multer processing')
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded',
+        message: '请选择要上传的图片文件'
+      })
+    }
+
+    try {
+      const fileUrl = uploadService.generateFileUrl(req.file.filename, category)
+
+      logger.success(`✅ Uploaded image: ${req.file.filename} to category: ${category}`)
+      return res.json({
+        success: true,
+        data: {
+          filename: req.file.filename,
+          originalName: req.file.originalname,
+          url: fileUrl,
+          size: req.file.size,
+          category,
+          uploadTime: new Date().toISOString()
+        }
+      })
+    } catch (fileUrlError) {
+      logger.error('❌ Error generating file URL:', fileUrlError)
+      return res.status(500).json({
+        success: false,
+        error: 'Upload successful but failed to generate file URL',
+        message: fileUrlError.message
+      })
+    }
+  })
+})
+
+// 获取文件列表
+router.get('/files/:category', authenticateAdmin, async (req, res) => {
+  try {
+    const { category } = req.params
+    const files = await uploadService.getFileList(category)
+
+    return res.json({
+      success: true,
+      data: files
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to get file list for ${req.params.category}:`, error)
+    return res.status(500).json({
+      error: 'Failed to get file list',
+      message: error.message
+    })
+  }
+})
+
+// 获取所有文件
+router.get('/files', authenticateAdmin, async (req, res) => {
+  try {
+    const files = await uploadService.getFileList('')
+
+    return res.json({
+      success: true,
+      data: files
+    })
+  } catch (error) {
+    logger.error('❌ Failed to get all files:', error)
+    return res.status(500).json({
+      error: 'Failed to get files',
+      message: error.message
+    })
+  }
+})
+
+// 删除文件
+router.delete('/files/:category/:filename', authenticateAdmin, async (req, res) => {
+  try {
+    const { category, filename } = req.params
+
+    // 构建文件路径
+    const filePath = path.join(__dirname, '../../uploads/qrcodes', category, filename)
+
+    await uploadService.deleteFile(filePath)
+
+    logger.success(`✅ Admin deleted file: ${filename}`)
+    return res.json({
+      success: true,
+      message: 'File deleted successfully'
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to delete file ${req.params.filename}:`, error)
+    return res.status(500).json({
+      error: 'Failed to delete file',
+      message: error.message
+    })
+  }
+})
+
+// 获取文件列表 (带category参数)
+router.get('/upload/files', authenticateAdmin, async (req, res) => {
+  try {
+    const category = req.query.category || 'other'
+    const files = await uploadService.getFileList(category)
+
+    return res.json({
+      success: true,
+      data: {
+        data: files
+      }
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to get files for category ${req.query.category}:`, error)
+    return res.status(500).json({
+      error: 'Failed to get files',
+      message: error.message
+    })
+  }
+})
+
+// 删除文件
+router.delete('/upload/files/:filename', authenticateAdmin, async (req, res) => {
+  try {
+    const { filename } = req.params
+    const category = req.query.category || 'other'
+
+    // 构建文件路径
+    const filePath = path.join(__dirname, '../../uploads/qrcodes', category, filename)
+
+    await uploadService.deleteFile(filePath)
+
+    logger.success(`✅ Admin deleted file: ${filename}`)
+    return res.json({
+      success: true,
+      message: 'File deleted successfully'
+    })
+  } catch (error) {
+    logger.error(`❌ Failed to delete file ${req.params.filename}:`, error)
+    return res.status(500).json({
+      error: 'Failed to delete file',
+      message: error.message
+    })
+  }
+})
+
+// 重置套餐为默认配置
+router.post('/packages/reset-defaults', authenticateAdmin, async (req, res) => {
+  try {
+    await packageService.resetToDefaultPackages()
+    logger.success('✅ Admin reset packages to default configuration')
+    return res.json({
+      success: true,
+      message: '套餐已重置为默认配置'
+    })
+  } catch (error) {
+    logger.error('❌ Failed to reset packages to defaults:', error)
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to reset packages',
+      message: error.message
+    })
+  }
+})
 
 module.exports = router

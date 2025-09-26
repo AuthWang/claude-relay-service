@@ -6,15 +6,36 @@ const fs = require('fs')
 const redis = require('../models/redis')
 const logger = require('../utils/logger')
 const config = require('../../config/config')
+const packageService = require('../services/packageService')
 
 const router = express.Router()
 
 // 🏠 服务静态文件
 router.use('/assets', express.static(path.join(__dirname, '../../web/assets')))
+router.use('/uploads', express.static(path.join(__dirname, '../../uploads')))
 
 // 🌐 页面路由重定向到新版 admin-spa
 router.get('/', (req, res) => {
   res.redirect(301, '/admin-next/')
+})
+
+// 📦 公开API - 获取套餐列表（供首页使用）
+router.get('/api/packages', async (req, res) => {
+  try {
+    const packages = await packageService.getPublicPackages()
+
+    return res.json({
+      success: true,
+      data: packages || []
+    })
+  } catch (error) {
+    logger.error('❌ Failed to get public packages:', error)
+    // 即使出错也返回空数组，避免前端报错
+    return res.json({
+      success: true,
+      data: []
+    })
+  }
 })
 
 // 🔐 管理员登录
