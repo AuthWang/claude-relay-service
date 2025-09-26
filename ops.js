@@ -30,6 +30,7 @@ class OpsController {
       shouldOpen: args.includes('--open'),
       isFollow: args.includes('-f') || args.includes('--follow'),
       autoPersist: args.includes('--auto-persist'),
+      forceInstall: args.includes('--force-install'),
       redisDocker: args.includes('--redis-docker'),
       redisLocal: args.includes('--redis-local'),
       redisExternal: args.includes('--redis-external')
@@ -55,6 +56,7 @@ class OpsController {
     try {
       switch (command) {
         case 'start':
+          this.serviceManager.forceInstall = flags.forceInstall;
           await this.serviceManager.start(flags.isProd, flags.shouldOpen, flags.autoPersist, redisStrategy);
           break;
 
@@ -65,6 +67,7 @@ class OpsController {
         case 'restart':
           this.serviceManager.isProd = flags.isProd;
           this.serviceManager.shouldOpen = flags.shouldOpen;
+          this.serviceManager.forceInstall = flags.forceInstall;
           await this.serviceManager.restart();
           break;
 
