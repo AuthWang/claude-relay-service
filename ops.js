@@ -19,7 +19,7 @@ class OpsController {
     this.logManager = new LogManager(this.rootDir);
     this.redisManager = new RedisManager(this.rootDir);
     this.proxyManager = new ProxyManager(this.rootDir);
-    this.interactiveManager = new InteractiveManager(this.serviceManager, this.logManager);
+    this.interactiveManager = new InteractiveManager(this.serviceManager, this.logManager, this.proxyManager);
   }
 
   /**
