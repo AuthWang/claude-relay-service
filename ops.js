@@ -33,6 +33,7 @@ class OpsController {
       isFollow: args.includes('-f') || args.includes('--follow'),
       autoPersist: args.includes('--auto-persist'),
       forceInstall: args.includes('--force-install'),
+      interactive: args.includes('--interactive'),
       redisDocker: args.includes('--redis-docker'),
       redisLocal: args.includes('--redis-local'),
       redisExternal: args.includes('--redis-external')
@@ -59,7 +60,13 @@ class OpsController {
       switch (command) {
         case 'start':
           this.serviceManager.forceInstall = flags.forceInstall;
-          await this.serviceManager.start(flags.isProd, flags.shouldOpen, flags.autoPersist, redisStrategy);
+          await this.serviceManager.start(
+            flags.isProd,
+            flags.shouldOpen,
+            flags.autoPersist,
+            redisStrategy,
+            flags.interactive
+          );
           break;
 
         case 'stop':
@@ -70,6 +77,7 @@ class OpsController {
           this.serviceManager.isProd = flags.isProd;
           this.serviceManager.shouldOpen = flags.shouldOpen;
           this.serviceManager.forceInstall = flags.forceInstall;
+          this.serviceManager.interactive = flags.interactive;
           await this.serviceManager.restart();
           break;
 
@@ -487,6 +495,11 @@ Redis类型说明:
   persistent  - 数据持久化到./redis_data目录（推荐）
   temporary   - 临时容器，删除后数据丢失
   compose     - 使用docker-compose.yml配置启动
+
+提示:
+  在执行 'node ops.js start' 或 'node ops.js restart' 时附加 '--interactive'
+  可手动选择Redis启动策略或跳过Redis。
+  默认会依次检查本地Redis、挂载redis_data/的Docker容器，并用data/init.json自动初始化凭据。
 `);
   }
 
